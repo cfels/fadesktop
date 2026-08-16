@@ -9,6 +9,8 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 
 #include "fa_lang_auto.h"
 #include "fa/settings/fa_settings.h"
+#include "fa/ui/md3/fa_nav_drawer.h"
+#include "fa/ui/md3/fa_cards.h"
 
 #include "settings/sections/settings_main.h"
 #include "settings/settings_builder.h"
@@ -68,7 +70,6 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 #include "base/unixtime.h"
 #include "base/random.h"
 #include "styles/style_chat.h" // popupMenuExpandedSeparator
-#include "styles/style_dialogs.h" // dialogsPremiumIcon
 #include "styles/style_layers.h"
 #include "styles/style_settings.h"
 #include "styles/style_menu_icons.h"
@@ -81,6 +82,7 @@ namespace Settings {
 namespace {
 
 using namespace Builder;
+namespace FAUi = FA::Ui;
 
 struct InformationHighlightTargets {
 	QPointer<Ui::RpWidget> photo;
@@ -222,17 +224,17 @@ public:
 private:
 	void setup();
 
-	[[nodiscard]] not_null<Ui::SlideWrap<Ui::SettingsButton>*> setupAdd();
+	[[nodiscard]] not_null<Ui::SlideWrap<FA::Ui::NavDrawerButton>*> setupAdd();
 	void rebuild();
 
 	const not_null<Window::SessionController*> _controller;
 	const not_null<Ui::VerticalLayout*> _outer;
 	int _outerIndex = 0;
 
-	Ui::SlideWrap<Ui::SettingsButton> *_addAccount = nullptr;
+	Ui::SlideWrap<FA::Ui::NavDrawerButton> *_addAccount = nullptr;
 	base::flat_map<
 		not_null<::Main::Account*>,
-		base::unique_qptr<Ui::SettingsButton>> _watched;
+		base::unique_qptr<FA::Ui::NavDrawerButton>> _watched;
 
 	base::unique_qptr<Ui::PopupMenu> _contextMenu;
 	std::unique_ptr<Ui::VerticalLayoutReorder> _reorder;
@@ -423,7 +425,7 @@ void SetupBirthday(
 		InformationHighlightTargets *targets) {
 	const auto session = &self->session();
 
-	Ui::AddSkip(container);
+	const auto card = FAUi::CreateCardContainer(container, 4, 4);
 
 	auto value = rpl::combine(
 		Info::Profile::BirthdayValue(self),
@@ -440,7 +442,7 @@ void SetupBirthday(
 			}));
 	};
 	const auto birthdayButton = AddRow(
-		container,
+		card,
 		tr::lng_settings_birthday_label(),
 		std::move(value),
 		tr::lng_mediaview_copy(tr::now),
@@ -461,8 +463,7 @@ void SetupBirthday(
 			&& value.never.peers.empty();
 	}) | rpl::distinct_until_changed();
 
-	Ui::AddSkip(container);
-	Ui::AddDividerText(container, rpl::conditional(
+	FAUi::AddCardDescription(container, rpl::conditional(
 		std::move(isExactlyContacts),
 		tr::lng_settings_birthday_contacts(
 			lt_link,
@@ -544,7 +545,7 @@ void SetupPersonalChannel(
 		not_null<Window::SessionController*> controller,
 		not_null<UserData*> self,
 		InformationHighlightTargets *targets) {
-	Ui::AddSkip(container);
+	const auto card = FAUi::CreateCardContainer(container, 4, 4);
 
 	auto value = rpl::combine(
 		Info::Profile::PersonalChannelValue(self),
@@ -560,17 +561,17 @@ void SetupPersonalChannel(
 			}));
 	};
 	const auto channelButton = AddRow(
-		container,
+		card,
 		tr::lng_settings_channel_label(),
 		std::move(value),
 		tr::lng_mediaview_copy(tr::now),
 		edit,
 		{ &st::menuIconChannel });
 
-	SetupChatAutomation(container, controller, self, targets);
+	SetupChatAutomation(card, controller, self, targets);
 
 	const auto colorButton = AddPeerColorButton(
-		container,
+		card,
 		controller->uiShow(),
 		self,
 		st::settingsColorButton);
@@ -578,9 +579,6 @@ void SetupPersonalChannel(
 		targets->channelButton = channelButton;
 		targets->colorButton = colorButton;
 	}
-
-	Ui::AddSkip(container);
-	Ui::AddDivider(container);
 }
 
 void SetupRows(
@@ -590,7 +588,7 @@ void SetupRows(
 		InformationHighlightTargets *targets) {
 	const auto session = &self->session();
 
-	Ui::AddSkip(container);
+	const auto card = FAUi::CreateCardContainer(container, 4, 4);
 
 	const auto showEditName = [=] {
 		if (controller->showFrozenError()) {
@@ -599,7 +597,7 @@ void SetupRows(
 		controller->show(Box<EditNameBox>(self));
 	};
 	const auto nameButton = AddRow(
-		container,
+		card,
 		tr::lng_settings_name_label(),
 		Info::Profile::NameValue(self) | rpl::map(tr::marked),
 		tr::lng_profile_copy_fullname(tr::now),
@@ -614,7 +612,7 @@ void SetupRows(
 		controller->showToast(tr::lng_text_copied(tr::now), 500);
 	};
 	const auto phoneButton = AddRow(
-		container,
+		card,
 		tr::lng_settings_phone_label(),
 		Info::Profile::PhoneWithSpoilerValue(
 			self,
@@ -660,7 +658,7 @@ void SetupRows(
 	});
 	session->api().usernames().requestToCache(session->user());
 	const auto usernameButton = AddRow(
-		container,
+		card,
 		std::move(label),
 		std::move(usernameValue),
 		tr::lng_context_copy_mention(tr::now),
@@ -680,8 +678,7 @@ void SetupRows(
 		targets->username = usernameButton;
 	}
 
-	Ui::AddSkip(container);
-	Ui::AddDividerText(container, tr::lng_settings_username_about());
+	FAUi::AddCardDescription(container, tr::lng_settings_username_about());
 }
 
 void SetupBio(
@@ -701,20 +698,23 @@ void SetupBio(
 	const auto current = Ui::AttachAsChild(container, self->about());
 	const auto changed = Ui::CreateChild<rpl::event_stream<bool>>(
 		container.get());
-	const auto bio = container->add(
+
+	const auto card = FAUi::CreateCardContainer(container, 8, 4);
+
+	const auto bio = card->add(
 		object_ptr<Ui::InputField>(
-			container,
+			card,
 			*style,
 			Ui::InputField::Mode::MultiLine,
 			tr::lng_bio_placeholder(),
 			*current),
-		st::settingsBioMargins);
+		style::margins(16, 6, 16, 6));
 	if (targets) {
 		targets->bio = bio;
 	}
 
 	const auto countdown = Ui::CreateChild<Ui::FlatLabel>(
-		container.get(),
+		card.get(),
 		QString(),
 		st::settingsBioCountdown);
 
@@ -804,16 +804,16 @@ void SetupBio(
 		&self->session());
 	updated();
 
-	Ui::AddDividerText(container, tr::lng_settings_about_bio());
+	FAUi::AddCardDescription(container, tr::lng_settings_about_bio());
 }
 
 void SetupAccountsWrap(
 		not_null<Ui::VerticalLayout*> container,
 		not_null<Window::SessionController*> controller,
 		InformationHighlightTargets *targets) {
-	Ui::AddSkip(container);
+	const auto card = FAUi::CreateCardContainer(container, 4, 8);
 
-	auto events = SetupAccounts(container, controller);
+	auto events = SetupAccounts(card, controller);
 	if (targets) {
 		targets->addAccount = events.addAccountButton;
 	}
@@ -823,7 +823,7 @@ void SetupAccountsWrap(
 	return (modifiers & Qt::ShiftModifier) && (modifiers & Qt::AltModifier);
 }
 
-[[nodiscard]] object_ptr<Ui::SettingsButton> MakeAccountButton(
+[[nodiscard]] object_ptr<FA::Ui::NavDrawerButton> MakeAccountButton(
 		QWidget *parent,
 		not_null<Window::SessionController*> window,
 		not_null<::Main::Account*> account,
@@ -840,7 +840,7 @@ void SetupAccountsWrap(
 	) | rpl::map([=] {
 		return user->name();
 	}));
-	auto result = object_ptr<Ui::SettingsButton>(
+	auto result = object_ptr<FA::Ui::NavDrawerButton>(
 		parent,
 		rpl::duplicate(text),
 		st::mainMenuAddAccountButton);
@@ -878,8 +878,7 @@ void SetupAccountsWrap(
 		+ userpicSkip * 2;
 	raw->heightValue(
 	) | rpl::on_next([=](int height) {
-		const auto left = st::mainMenuAddAccountButton.iconLeft
-			+ (st::settingsIconAdd.width() - userpicSize) / 2;
+		const auto left = 12 + 16 + (st::settingsIconAdd.width() - userpicSize) / 2;
 		const auto top = (height - userpicSize) / 2;
 		state->userpic.setGeometry(left, top, userpicSize, userpicSize);
 	}, state->userpic.lifetime());
@@ -898,7 +897,7 @@ void SetupAccountsWrap(
 			const auto rect = QRectF(shift, shift, diameter, diameter);
 			auto hq = PainterHighQualityEnabler(p);
 			auto pen = st::windowBgActive->p; // The same as '+' in add.
-			bool use_default_rounding = FASettings::JsonSettings::GetBool("use_default_rounding");
+			bool use_default_rounding = FASettings::FASettings::getInstance().useDefaultRounding();
 			pen.setWidthF(line);
 			p.setPen(pen);
 			p.setBrush(Qt::NoBrush);
@@ -910,8 +909,8 @@ void SetupAccountsWrap(
 				auto width = rect.width();
 				p.drawRoundedRect(
 					rect, 
-					height * FASettings::JsonSettings::GetInt("roundness") / 100, 
-					width * FASettings::JsonSettings::GetInt("roundness") / 100
+					height * FASettings::FASettings::getInstance().roundness() / 100, 
+					width * FASettings::FASettings::getInstance().roundness() / 100
 				);
 			}
 		}
@@ -1051,11 +1050,11 @@ void AccountsList::setup() {
 }
 
 
-not_null<Ui::SlideWrap<Ui::SettingsButton>*> AccountsList::setupAdd() {
+not_null<Ui::SlideWrap<FA::Ui::NavDrawerButton>*> AccountsList::setupAdd() {
 	const auto result = _outer->add(
-		object_ptr<Ui::SlideWrap<Ui::SettingsButton>>(
+		object_ptr<Ui::SlideWrap<FA::Ui::NavDrawerButton>>(
 			_outer.get(),
-			CreateButtonWithIcon(
+			FA::Ui::CreateNavDrawerButton(
 				_outer.get(),
 				tr::lng_menu_add_account(),
 				st::mainMenuAddAccountButton,

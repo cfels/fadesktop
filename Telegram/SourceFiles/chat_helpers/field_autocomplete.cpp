@@ -57,7 +57,6 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 #include "styles/style_widgets.h"
 #include "styles/style_chat_helpers.h"
 #include "styles/style_dialogs.h"
-#include "styles/style_menu_icons.h"
 
 #include <QtWidgets/QApplication>
 
@@ -533,7 +532,11 @@ void FieldAutocomplete::updateFiltered(bool resetScroll) {
 			if (containsMentionUser(user)) {
 				return;
 			}
-			mrows.push_back({ user, source });
+			mrows.push_back({
+				.user = user,
+				.source = source,
+				.userpic = user->activeUserpicView(),
+			});
 		};
 		const auto markMentionCandidateIfExists = [&](
 				not_null<UserData*> user) {
@@ -1492,7 +1495,7 @@ bool FieldAutocomplete::Inner::chooseAtIndex(
 			const auto user = _mrows->at(index).user;
 			const auto mentionUsername = PrimaryUsername(user);
 			const auto addComma = !user->isBot()
-				&& FASettings::JsonSettings::GetBool("add_comma_after_mention");
+				&& FASettings::FASettings::getInstance().addCommaAfterMention();
 			_mentionChosen.fire({ user, mentionUsername, addComma, method });
 			return true;
 		}
@@ -1909,9 +1912,12 @@ void InitFieldAutocomplete(
 			auto name = user->firstName.isEmpty()
 				? user->name()
 				: user->firstName;
-			field->insertTag(name, PrepareMentionTag(user), suffix);
+			field->insertTag(name, PrepareMentionTag(user));
 		} else {
-			field->insertTag('@' + data.mention, QString(), suffix);
+			field->insertTag('@' + data.mention);
+		}
+		if (!suffix.isEmpty()) {
+			field->textCursor().insertText(suffix);
 		}
 		if (data.method == FieldAutocompleteChooseMethod::ByTab) {
 			field->textCursor().insertText(" @");
@@ -1969,10 +1975,10 @@ void InitFieldAutocomplete(
 	}
 
 	field->tabbed(
-	) | rpl::on_next([=](not_null<bool*> handled) {
+	) | rpl::on_next([=](not_null<Ui::InputField::TabbedRequest*> request) {
 		if (!raw->isHidden()) {
 			raw->chooseSelected(FieldAutocomplete::ChooseMethod::ByTab);
-			*handled = true;
+			request->handled = true;
 		}
 	}, raw->lifetime());
 

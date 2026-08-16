@@ -51,6 +51,7 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 #include "styles/style_layers.h"
 #include "styles/style_menu_icons.h"
 #include "styles/style_settings.h"
+#include "styles/style_stickers_box.h"
 
 namespace Settings {
 namespace {
@@ -598,28 +599,7 @@ not_null<Ui::VerticalLayout*> SetupFoldersList(
 	});
 
 	const auto prepareGoodIdsForNewFilters = [=] {
-		auto &realFilters = session->data().chatsFilters();
-		const auto &list = realFilters.list();
-
-		const auto limits = Data::PremiumLimits(session);
-		const auto serverLimit = session->user()->isPremium()
-			? limits.dialogFiltersPremium()
-			: limits.dialogFiltersDefault();
-
-		auto serverCount = 0;
-		for (const auto &f : list) {
-			if (f.id() && !realFilters.isLocalFilter(f.id())) {
-				++serverCount;
-			}
-		}
-		for (const auto &row : state->rows) {
-			if (row.removed
-				&& row.filter.id()
-				&& !realFilters.isLocalFilter(row.filter.id())) {
-				--serverCount;
-			}
-		}
-
+		const auto &list = session->data().chatsFilters().list();
 		auto localId = 1;
 		const auto chooseNextId = [&] {
 			++localId;
@@ -635,14 +615,7 @@ not_null<Ui::VerticalLayout*> SetupFoldersList(
 				continue;
 			} else if (!id
 				|| !ranges::contains(list, id, &Data::ChatFilter::id)) {
-				if (serverCount < serverLimit) {
-					result.emplace(row.button, chooseNextId());
-					++serverCount;
-				} else {
-					result.emplace(
-						row.button,
-						realFilters.allocateLocalId());
-				}
+				result.emplace(row.button, chooseNextId());
 			}
 		}
 		return result;
@@ -661,8 +634,7 @@ not_null<Ui::VerticalLayout*> SetupFoldersList(
 		auto removeRequests = std::vector<MTPmessages_UpdateDialogFilter>();
 		auto removeChatlistRequests = std::vector<MTPchatlists_LeaveChatlist>();
 
-		auto &realFilters = session->data().chatsFilters();
-		const auto &list = realFilters.list();
+		const auto &list = session->data().chatsFilters().list();
 		order.reserve(state->rows.size());
 		for (auto &row : state->rows) {
 			if (row.button.get() == single) {
@@ -684,15 +656,6 @@ not_null<Ui::VerticalLayout*> SetupFoldersList(
 				if (row.button.get() == single) {
 					updated = row.filter;
 				}
-			}
-			if (realFilters.isLocalFilter(newId)) {
-				if (removed) {
-					realFilters.remove(newId);
-				} else {
-					realFilters.set(row.filter);
-					order.push_back(newId);
-				}
-				continue;
 			}
 			const auto tl = removed
 				? MTPDialogFilter()
@@ -799,7 +762,7 @@ not_null<Ui::VerticalLayout*> SetupFoldersList(
 			sendRequests(removeRequests);
 			sendRequests(removeChatlistRequests);
 			sendRequests(addRequests);
-			if (!order.empty() && !addRequests.empty()) {
+			if (!order.empty()) {
 				filters->saveOrder(order, previousId);
 			}
 			checkFinished();
@@ -1186,35 +1149,25 @@ void BuildViewSection(SectionBuilder &builder) {
 			Core::App().saveSettingsDelayed();
 		});
 
-		const auto modeWrap = content->add(
-			object_ptr<Ui::SlideWrap<Ui::VerticalLayout>>(
-				content,
-				object_ptr<Ui::VerticalLayout>(content)));
-		modeWrap->toggleOn(rpl::single(
-			Core::App().settings().chatFiltersHorizontal()
-		) | rpl::then(
-			Core::App().settings().chatFiltersHorizontalChanges()));
-		modeWrap->finishAnimating();
-		const auto modeContent = modeWrap->entity();
-
-		Ui::AddSkip(modeContent);
+		Ui::AddSkip(content);
 		Ui::AddSubsectionTitle(
-			modeContent,
+			content,
 			tr::lng_filters_tabs_subtitle());
 
 		using Mode = Ui::ChatsFiltersTabsMode;
 		const auto modeGroup = std::make_shared<Ui::RadioenumGroup<Mode>>(
 			Core::App().settings().chatFiltersTabsMode());
 		const auto addMode = [&](Mode value, const QString &text) {
-			modeContent->add(
+			content->add(
 				object_ptr<Ui::Radioenum<Mode>>(
-					modeContent,
+					content,
 					modeGroup,
 					value,
 					text,
 					st::settingsSendType),
 				st::settingsSendTypePadding);
 		};
+		addMode(Mode::Default, tr::lng_filters_tabs_default(tr::now));
 		addMode(Mode::TextOnly, tr::lng_filters_tabs_text(tr::now));
 		addMode(Mode::TextAndIcons, tr::lng_filters_tabs_text_icons(tr::now));
 		addMode(Mode::IconsOnly, tr::lng_filters_tabs_icons(tr::now));

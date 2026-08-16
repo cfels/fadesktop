@@ -7,6 +7,7 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 */
 
 #include "fa/settings/fa_settings.h"
+#include "fa/ui/md3/fa_avatar_shape.h"
 
 #include "ui/userpic_view.h"
 
@@ -144,13 +145,13 @@ void ValidateUserpicCache(
 
 	const auto full = QSize(size, size);
 	const auto version = style::PaletteVersion();
-	const auto shapeValue = static_cast<uint32>(shape) & 3;
+	const auto shapeValue = static_cast<uint32>(shape);
 	const auto regenerate = (view.cached.size() != QSize(size, size))
 		|| (view.shape != shapeValue)
 		|| (cloud && !view.empty.null())
 		|| (empty && empty != view.empty.get())
 		|| (empty && view.paletteVersion != version);
-	bool use_default_rounding = FASettings::JsonSettings::GetBool("use_default_rounding");
+	bool use_default_rounding = FASettings::FASettings::getInstance().useDefaultRounding();
 	if (!regenerate) {
 		return;
 	}
@@ -159,14 +160,16 @@ void ValidateUserpicCache(
 	view.paletteVersion = version;
 
 	const auto forum = (shape == PeerUserpicShape::Forum);
-	const auto radius = size * FASettings::JsonSettings::GetInt("roundness") / 100 / style::DevicePixelRatio();
+	const auto radius = size * FASettings::FASettings::getInstance().roundness() / 100 / style::DevicePixelRatio();
 
 	if (cloud) {
 		view.cached = cloud->scaled(
 			full,
 			Qt::IgnoreAspectRatio,
 			Qt::SmoothTransformation);
-		if (shape == PeerUserpicShape::Monoforum) {
+		if (shape == PeerUserpicShape::Material) {
+			view.cached = FA::Ui::ApplyMaterialShape(std::move(view.cached));
+		} else if (shape == PeerUserpicShape::Monoforum) {
 			view.cached = Ui::ApplyMonoforumShape(std::move(view.cached));
 		} else if (forum) {
 			if (use_default_rounding) {
@@ -196,7 +199,11 @@ void ValidateUserpicCache(
 		view.cached.fill(Qt::transparent);
 
 		auto p = QPainter(&view.cached);
-		if (shape == PeerUserpicShape::Monoforum) {
+		if (shape == PeerUserpicShape::Material) {
+			empty->paintSquare(p, 0, 0, size, size);
+			p.end();
+			view.cached = FA::Ui::ApplyMaterialShape(std::move(view.cached));
+		} else if (shape == PeerUserpicShape::Monoforum) {
 			empty->paintMonoforum(p, 0, 0, size, size);
 		} else if (forum) {
 			if (use_default_rounding) {

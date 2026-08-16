@@ -115,51 +115,6 @@ const auto SmallLevels = "sa"_q;
 const auto ThumbnailLevels = "mbsa"_q;
 const auto LargeLevels = "ydxcwmbsa"_q;
 
-[[nodiscard]] bool LocalUnlimitedPinnedChatsEnabled() {
-	return FASettings::JsonSettings::GetBool("unlimited_pinned_chats");
-}
-
-[[nodiscard]] QJsonArray LocalPinnedChatsOrder(uint64 accountId) {
-	return FASettings::JsonSettings::GetJsonArray("pinned_chat_order", accountId);
-}
-
-[[nodiscard]] bool LocalPinnedChatsContains(
-		const QJsonArray &saved,
-		PeerId peerId) {
-	for (const auto &value : saved) {
-		if (PeerId(value.toVariant().toULongLong()) == peerId) {
-			return true;
-		}
-	}
-	return false;
-}
-
-void RestoreLocalPinnedChats(not_null<Session*> session) {
-	if (!LocalUnlimitedPinnedChatsEnabled()) {
-		return;
-	}
-	const auto accountId = session->session().uniqueId();
-	const auto saved = LocalPinnedChatsOrder(accountId);
-	if (saved.isEmpty()) {
-		return;
-	}
-	const auto list = session->chatsList(nullptr)->pinned();
-	for (auto i = saved.size(); i != 0; --i) {
-		const auto peerId = PeerId(saved.at(i - 1).toVariant().toULongLong());
-		if (!peerId) {
-			continue;
-		}
-		const auto history = session->history(peerId);
-		if (!history->lastMessageKnown()) {
-			session->histories().requestDialogEntry(history);
-		}
-		if (!history->folderKnown() || history->folder()) {
-			history->clearFolder();
-		}
-		list->setPinned(history, true);
-	}
-}
-
 void CheckForSwitchInlineButton(not_null<HistoryItem*> item) {
 	if (item->out() || !item->hasSwitchInlineButton()) {
 		return;
@@ -295,13 +250,13 @@ Session::Session(not_null<Main::Session*> session)
 , _pollsClosingTimer([=] { checkPollsClosings(); })
 , _watchForOfflineTimer([=] { checkLocalUsersWentOffline(); })
 , _groups(this)
+, _histories(std::make_unique<Histories>(this))
 , _aiComposeTones(std::make_unique<AiComposeTones>(session))
 , _chatsFilters(std::make_unique<ChatFilters>(this))
 , _cloudThemes(std::make_unique<CloudThemes>(session))
 , _sendActionManager(std::make_unique<SendActionManager>())
 , _streaming(std::make_unique<Streaming>(this))
 , _mediaRotation(std::make_unique<MediaRotation>())
-, _histories(std::make_unique<Histories>(this))
 , _stickers(std::make_unique<Stickers>(this))
 , _reactions(std::make_unique<Reactions>(this))
 , _emojiStatuses(std::make_unique<EmojiStatuses>(this))
@@ -380,7 +335,7 @@ Session::Session(not_null<Main::Session*> session)
 			}
 		}, _lifetime);
 
-		bool hide_stories = FASettings::JsonSettings::GetBool("hide_stories");
+		bool hide_stories = FASettings::FASettings::getInstance().hideStories();
 		if (!hide_stories) {
 			_stories->loadMore(Data::StorySourcesList::NotHidden);
 		}
@@ -515,11 +470,10 @@ void Session::clear() {
 	HistoryView::Element::ClearGlobal();
 	_contactsNoChatsList.clear();
 	_contactsList.clear();
-	_chatsList.clear();
-	_localPinnedRestoredForCurrentLoad = false;
 	for (const auto &[id, folder] : _folders) {
 		folder->clearChatsList();
 	}
+	_chatsList.clear();
 	_chatsFilters->clear();
 	_histories->clearAll();
 	_webpages.clear();
@@ -1326,6 +1280,12 @@ not_null<PeerData*> Session::processChat(const MTPChat &data) {
 	} else if (!result->isLoaded()) {
 		result->setLoadedStatus(PeerData::LoadedStatus::Normal);
 	}
+	if (!_pinnedCommunitiesNotLoaded.empty()) {
+		if (const auto channel = result->asChannel()
+			; channel && channel->isCommunity()) {
+			checkPinnedCommunityLoaded(channel);
+		}
+	}
 	if (flags) {
 		session().changes().peerUpdated(result, flags);
 	}
@@ -1702,9 +1662,6 @@ void Session::chatsListDone(Data::Folder *folder) {
 		folder->chatsList()->setLoaded();
 	} else {
 		_chatsList.setLoaded();
-		if (LocalUnlimitedPinnedChatsEnabled()) {
-			notifyPinnedDialogsOrderUpdated();
-		}
 	}
 	_chatsListLoadedEvents.fire_copy(folder);
 }
@@ -2442,21 +2399,6 @@ void Session::sendHistoryChangeNotifications() {
 
 void Session::notifyPinnedDialogsOrderUpdated() {
 	_pinnedDialogsOrderUpdated.fire({});
-	if (LocalUnlimitedPinnedChatsEnabled() && chatsListLoaded(nullptr)) {
-		const auto &order = pinnedChatsOrder(nullptr);
-		auto peerIds = QJsonArray();
-		for (const auto &key : order) {
-			if (const auto history = key.history()) {
-				peerIds.append(QString::number(history->peer->id.value));
-			}
-		}
-		const auto accountId = _session->uniqueId();
-		FASettings::JsonSettings::Set(
-			"pinned_chat_order",
-			peerIds,
-			accountId);
-		FASettings::JsonSettings::Write();
-	}
 }
 
 rpl::producer<> Session::pinnedDialogsOrderUpdated() const {
@@ -2709,9 +2651,6 @@ void Session::applyPinnedChats(
 		});
 	}
 	chatsList(folder)->pinned()->applyList(this, list);
-	if (!folder && LocalUnlimitedPinnedChatsEnabled()) {
-		RestoreLocalPinnedChats(this);
-	}
 	notifyPinnedDialogsOrderUpdated();
 }
 
@@ -2733,13 +2672,6 @@ void Session::applyDialogs(
 			applyDialog(requestFolder, data);
 		});
 	}
-	if (!requestFolder && LocalUnlimitedPinnedChatsEnabled()) {
-		RestoreLocalPinnedChats(this);
-		if (!_localPinnedRestoredForCurrentLoad) {
-			_localPinnedRestoredForCurrentLoad = true;
-			notifyPinnedDialogsOrderUpdated();
-		}
-	}
 	if (requestFolder && count) {
 		requestFolder->chatsList()->setCloudListSize(*count);
 	}
@@ -2755,15 +2687,7 @@ void Session::applyDialog(
 
 	const auto history = this->history(peerId);
 	history->applyDialog(requestFolder, data);
-	auto pinned = data.is_pinned();
-	if (!requestFolder
-		&& LocalUnlimitedPinnedChatsEnabled()) {
-		if (!pinned) {
-			const auto saved = LocalPinnedChatsOrder(_session->uniqueId());
-			pinned = LocalPinnedChatsContains(saved, peerId);
-		}
-	}
-	setPinnedFromEntryList(history, pinned);
+	setPinnedFromEntryList(history, data.is_pinned());
 
 	if (const auto from = history->peer->migrateFrom()) {
 		if (const auto historyFrom = historyLoaded(from)) {
@@ -2793,14 +2717,25 @@ void Session::applyDialog(
 	const auto channelId = ChannelId(data.vcommunity_id().v);
 	const auto channel = channelLoaded(channelId);
 	if (!channel || !channel->isCommunity()) {
+		if (data.is_pinned()) {
+			_pinnedCommunitiesNotLoaded.emplace(channelId);
+		}
 		return;
 	}
+	_pinnedCommunitiesNotLoaded.remove(channelId);
 	const auto history = this->history(channel);
 	notifySettings().apply(
 		peerFromChannel(channelId),
 		data.vnotify_settings());
 	channel->ensuredCommunityInfo()->ensureRowInChatList();
 	setPinnedFromEntryList(history, data.is_pinned());
+}
+
+void Session::checkPinnedCommunityLoaded(not_null<ChannelData*> channel) {
+	if (!_pinnedCommunitiesNotLoaded.remove(peerToChannel(channel->id))) {
+		return;
+	}
+	session().api().reloadPinnedDialogs();
 }
 
 bool Session::pinnedCanPin(not_null<Dialogs::Entry*> entry) const {
@@ -2858,10 +2793,6 @@ int Session::pinnedChatsLimit(not_null<Data::SavedMessages*> saved) const {
 
 rpl::producer<int> Session::maxPinnedChatsLimitValue(
 		Data::Folder *folder) const {
-	if (!folder
-		&& FASettings::JsonSettings::GetBool("unlimited_pinned_chats")) {
-		return rpl::single(100);
-	}
 	return _session->appConfig().value(
 	) | rpl::map([folder, limits = Data::PremiumLimits(_session)] {
 		return folder
@@ -2930,6 +2861,9 @@ const std::vector<Dialogs::Key> &Session::pinnedChatsOrder(
 }
 
 void Session::clearPinnedChats(Data::Folder *folder) {
+	if (!folder) {
+		_pinnedCommunitiesNotLoaded.clear();
+	}
 	chatsList(folder)->pinned()->clear();
 }
 

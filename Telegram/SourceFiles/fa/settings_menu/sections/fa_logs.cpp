@@ -12,6 +12,7 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 #include "fa/settings_menu/sections/fa_logs.h"
 #include "fa/settings_menu/fa_deeplink_context_menu.h"
 #include "fa/utils/telegram_helpers.h"
+#include "fa/ui/md3/fa_cards.h"
 
 #include "fa_lang_auto.h"
 
@@ -39,26 +40,6 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 #include "api/api_blocked_peers.h"
 #include "ui/widgets/continuous_sliders.h"
 
-#define SettingsMenuJsonSwitch(LangKey, Option, ControlId) do { \
-	const auto _btn = container->add(object_ptr<Button>( \
-		container, \
-		fatr::LangKey(), \
-		st::settingsButtonNoIcon \
-	)); \
-	_btn->toggleOn( \
-		rpl::single(::FASettings::JsonSettings::GetBool(#Option)) \
-	)->toggledValue( \
-	) | rpl::filter([](bool enabled) { \
-		return (enabled != ::FASettings::JsonSettings::GetBool(#Option)); \
-	}) | rpl::on_next([](bool enabled) { \
-		::FASettings::JsonSettings::Write(); \
-		::FASettings::JsonSettings::Set(#Option, enabled); \
-		::FASettings::JsonSettings::Write(); \
-	}, container->lifetime()); \
-	Settings::FADeepLinkMenu::AttachSettingsContextMenu( \
-		_btn, ControlId, controller); \
-} while (false)
-
 namespace Settings {
 
     rpl::producer<QString> FALogs::title() {
@@ -73,29 +54,36 @@ namespace Settings {
     }
 
     void FALogs::SetupLogs(not_null<Ui::VerticalLayout *> container, not_null<Window::SessionController *> controller) {
-        Ui::AddSubsectionTitle(container, fatr::fa_debug_logs());
+        FA::Ui::AddModernSectionHeader(container, fatr::fa_debug_logs());
+		const auto card = FA::Ui::CreateCardContainer(container);
     	
-		const auto cleanLogsButton = AddButtonWithLabel(
-			container,
+		const auto cleanLogsButton = FA::Ui::AddCardButton(
+			card,
 			fatr::fa_clean_debug_logs(),
-			rpl::single(QString("")),
-			st::settingsButton,
-			{ &st::menuIconClear }
-		);
-		cleanLogsButton->setClickedCallback([=] {
-			controller->showToast(fatr::fa_cleaning_debug_logs(fatr::now), 500);
-			cleanDebugLogs();
-			controller->showToast(fatr::fa_cleaned_debug_logs(fatr::now), 1000);
-		});
+			[=] {
+				controller->showToast(fatr::fa_cleaning_debug_logs(fatr::now), 500);
+				cleanDebugLogs();
+				controller->showToast(fatr::fa_cleaned_debug_logs(fatr::now), 1000);
+			},
+			&st::menuIconClear);
 		Settings::FADeepLinkMenu::AttachSettingsContextMenu(
 			cleanLogsButton,
 			u"fa/logs/clean"_q,
 			controller);
-		
-		SettingsMenuJsonSwitch(fa_debug_logs, debug_logs, u"fa/logs/debug-logs"_q);
 
-		Ui::AddSkip(container);
-		Ui::AddDividerText(container, fatr::fa_logs_dir());
+		FA::Ui::AddCardDivider(card);
+		
+		auto &settings = FASettings::FASettings::getInstance();
+		const auto debugLogsRow = FA::Ui::AddCardToggle(
+			card,
+			fatr::fa_debug_logs(),
+			fatr::fa_logs_dir(),
+			settings.debugLogsValue(),
+			[&settings](bool enabled) {
+				settings.setDebugLogs(enabled);
+			});
+		Settings::FADeepLinkMenu::AttachSettingsContextMenu(
+			debugLogsRow, u"fa/logs/debug-logs"_q, controller);
     }
 
     void FALogs::SetupFALogs(not_null<Ui::VerticalLayout *> container, not_null<Window::SessionController *> controller) {

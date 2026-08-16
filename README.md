@@ -19,6 +19,24 @@
 
 ![[Preview of FAgram Desktop]][preview_image]
 
+<details>
+<summary><b>Click to expand preview images</b></summary>
+
+<table>
+  <tr>
+    <td align="center" valign="top"><img alt="Preview of FAgram Desktop" src="docs/assets/feat1.png"></td>
+    <td align="center" valign="top"><img alt="Preview of FAgram Desktop" src="docs/assets/feat2.png"></td>
+    <td align="center" valign="top"><img alt="Preview of FAgram Desktop" src="docs/assets/feat3.png"></td>
+  </tr>
+  <tr>
+    <td align="center" valign="top"><img alt="Preview of FAgram Desktop" src="docs/assets/feat4.png"></td>
+    <td align="center" valign="top"><img alt="Preview of FAgram Desktop" src="docs/assets/feat5.png"></td>
+    <td align="center" valign="top"><img alt="Preview of FAgram Desktop" src="docs/assets/feat6.png"></td>
+  </tr>
+</table>
+
+</details>
+
 </div>
 
 ## Features
@@ -35,7 +53,6 @@
 - Showing peer id and dc id
 - Hide stories
 - Show registration of the user
-- Solar icons (thx design480)
 - Show sticker and emoji pack owner
 - Add hide All chats folder
 - Added button Copy Callback to copy callback data of button
@@ -67,7 +84,7 @@
 - Support for scoop on windows
 - Translate option in send menu
 - Use our own API_ID & API_HASH
-- Use Google Translate API for chat translate feature
+- Multi-provider chat translate engine
 - Screenshot mode
 - Material You accent themes
 - MDY styled folder background
@@ -102,6 +119,14 @@
 - Copy summarised content instead of original
 - Improved blocked user spoiler mode
 - Nix/NixOS support
+- Replace GoogleAppTranslator with multi-provider engine
+- Set delete for everyone by default
+- Display full timestamps in last seen status
+- Show forwarded message date in title
+- Disable greeting stickers in chat intros
+- Material Design 3 UI
+- GoogleSansFlex as default font
+- Toggle switch for share menu folder icons
 
 </details>
 

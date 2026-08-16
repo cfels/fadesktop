@@ -133,6 +133,15 @@ const auto kFAGeneralMeta = BuildHelper({
 }, [](SectionBuilder &builder) {
 	builder.add(nullptr, [] {
 		return SearchEntry{
+			.id = u"fa/general/translation-provider"_q,
+			.title = fatr::fa_translation_provider(fatr::now),
+			.keywords = { u"translation"_q, u"provider"_q, u"translate"_q, u"engine"_q, u"google"_q, u"yandex"_q },
+			.icon = { &st::menuIconShowAll },
+		};
+	});
+
+	builder.add(nullptr, [] {
+		return SearchEntry{
 			.id = u"fa/general/disable-ads"_q,
 			.title = fatr::fa_disable_ads(fatr::now),
 			.keywords = { u"ads"_q, u"advertising"_q, u"sponsored"_q, u"disable"_q, u"block"_q, u"remove"_q },
@@ -312,24 +321,6 @@ const auto kFAChatsMeta = BuildHelper({
 
 	builder.add(nullptr, [] {
 		return SearchEntry{
-			.id = u"fa/chats/unlimited-pinned-chats"_q,
-			.title = fatr::fa_unlimited_pinned_chats(fatr::now),
-			.keywords = { u"pinned"_q, u"pin"_q, u"chats"_q, u"limit"_q, u"unlimited"_q },
-			.icon = { &st::menuIconChatBubble },
-		};
-	});
-
-	builder.add(nullptr, [] {
-		return SearchEntry{
-			.id = u"fa/chats/unlimited-chat-folders"_q,
-			.title = fatr::fa_unlimited_chat_folders(fatr::now),
-			.keywords = { u"folders"_q, u"folder"_q, u"chats"_q, u"limit"_q, u"unlimited"_q },
-			.icon = { &st::menuIconChatBubble },
-		};
-	});
-
-	builder.add(nullptr, [] {
-		return SearchEntry{
 			.id = u"fa/chats/delete-for-everyone"_q,
 			.title = fatr::fa_delete_for_everyone(fatr::now),
 			.keywords = { u"delete"_q, u"everyone"_q, u"default"_q, u"revoke"_q, u"checkmark"_q, u"checkbox"_q },
@@ -456,15 +447,6 @@ const auto kFAAppearanceMeta = BuildHelper({
 
 	builder.add(nullptr, [] {
 		return SearchEntry{
-			.id = u"fa/appearance/hide-folder-titles"_q,
-			.title = fatr::fa_hide_folder_tabs_titles(fatr::now),
-			.keywords = { u"folder"_q, u"tabs"_q, u"titles"_q, u"hide"_q, u"filters"_q },
-			.icon = { &st::menuIconPalette },
-		};
-	});
-
-	builder.add(nullptr, [] {
-		return SearchEntry{
 			.id = u"fa/appearance/use-tdesktop-themes"_q,
 			.title = fatr::fa_use_tdesktop_themes(fatr::now),
 			.keywords = { u"tdesktop"_q, u"themes"_q, u"theme"_q, u"default"_q },
@@ -475,8 +457,17 @@ const auto kFAAppearanceMeta = BuildHelper({
 	builder.add(nullptr, [] {
 		return SearchEntry{
 			.id = u"fa/appearance/material-icons"_q,
-			.title = fatr::fa_use_material_icon_pack(fatr::now),
+			.title = fatr::fa_icons(fatr::now),
 			.keywords = { u"icon"_q, u"pack"_q, u"material"_q, u"icons"_q },
+			.icon = { &st::menuIconPalette },
+		};
+	});
+
+	builder.add(nullptr, [] {
+		return SearchEntry{
+			.id = u"fa/appearance/share-menu-folder-icons"_q,
+			.title = fatr::fa_share_menu_folder_icons(fatr::now),
+			.keywords = { u"share"_q, u"folder"_q, u"icons"_q, u"labels"_q, u"tabs"_q },
 			.icon = { &st::menuIconPalette },
 		};
 	});

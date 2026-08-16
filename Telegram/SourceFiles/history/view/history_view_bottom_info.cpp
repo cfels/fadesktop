@@ -35,7 +35,6 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 #include "window/window_session_controller.h"
 #include "styles/style_chat.h"
 #include "styles/style_credits.h"
-#include "styles/style_dialogs.h"
 
 namespace HistoryView {
 namespace {
@@ -501,7 +500,7 @@ void BottomInfo::layoutDateText() {
 		? FormatEditedDate(_data.date, _data.editedDate)
 		: edited + ((_data.flags & Data::Flag::ForwardedDate)
 		? Ui::FormatDateTimeSavedFrom(_data.date)
-		: (FASettings::JsonSettings::GetBool("seconds_message")
+		: (FASettings::FASettings::getInstance().secondsMessage()
 			? QLocale().toString(_data.date.time(), QLocale().timeFormat(QLocale::ShortFormat).replace(QString("mm"), QString("mm:ss")))
 			: QLocale().toString(_data.date.time(), QLocale::ShortFormat)));
 	const auto afterAuthor = prefix + date;

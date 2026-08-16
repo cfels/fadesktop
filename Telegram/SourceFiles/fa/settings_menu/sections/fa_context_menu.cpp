@@ -11,6 +11,8 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 #include "fa/settings/fa_settings.h"
 #include "fa/settings_menu/sections/fa_context_menu.h"
 #include "fa/settings_menu/fa_deeplink_context_menu.h"
+#include "fa/ui/md3/fa_cards.h"
+#include "fa/ui/md3/fa_slider.h"
 
 #include "fa_lang_auto.h"
 
@@ -42,26 +44,6 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 #include "ui/widgets/buttons.h"
 #include "base/call_delayed.h"
 
-#define SettingsMenuJsonSwitch(LangKey, Option, ControlId) do { \
-	const auto _btn = container->add(object_ptr<Button>( \
-		container, \
-		fatr::LangKey(), \
-		st::settingsButtonNoIcon \
-	)); \
-	_btn->toggleOn( \
-		rpl::single(::FASettings::JsonSettings::GetBool(#Option)) \
-	)->toggledValue( \
-	) | rpl::filter([](bool enabled) { \
-		return (enabled != ::FASettings::JsonSettings::GetBool(#Option)); \
-	}) | rpl::on_next([](bool enabled) { \
-		::FASettings::JsonSettings::Write(); \
-		::FASettings::JsonSettings::Set(#Option, enabled); \
-		::FASettings::JsonSettings::Write(); \
-	}, container->lifetime()); \
-	Settings::FADeepLinkMenu::AttachSettingsContextMenu( \
-		_btn, ControlId, controller); \
-} while (false)
-
 namespace Settings {
 
     rpl::producer<QString> FAContextMenu::title() {
@@ -76,61 +58,70 @@ namespace Settings {
     }
 
     void FAContextMenu::SetupContextMenu(not_null<Ui::VerticalLayout *> container, not_null<Window::SessionController *> controller) {
-		Ui::AddSubsectionTitle(container, fatr::fa_context_menu());
+		auto &settings = FASettings::FASettings::getInstance();
 
-		const auto shortcutsBtn = container->add(object_ptr<Button>(
-			container,
+		FA::Ui::AddModernSectionHeader(container, fatr::fa_context_menu());
+		const auto shortcutsCard = FA::Ui::CreateCardContainer(container);
+
+		const auto shortcutsRow = FA::Ui::AddCardToggle(
+			shortcutsCard,
 			fatr::fa_context_menu_settings(),
-			st::settingsButtonNoIcon
-		));
-		shortcutsBtn->toggleOn(
-			rpl::single(::FASettings::JsonSettings::GetBool("context_menu_use_shortcuts"))
-		)->toggledValue(
-		) | rpl::filter([](bool enabled) {
-			return (enabled != ::FASettings::JsonSettings::GetBool("context_menu_use_shortcuts"));
-		}) | rpl::on_next([](bool enabled) {
-			::FASettings::JsonSettings::Write();
-			::FASettings::JsonSettings::Set("context_menu_use_shortcuts", enabled);
-			::FASettings::JsonSettings::Write();
-		}, container->lifetime());
+			fatr::fa_context_menu_desc(),
+			rpl::single(settings.contextMenuUseShortcuts()),
+			[&settings](bool enabled) {
+				settings.setContextMenuUseShortcuts(enabled);
+			});
 		Settings::FADeepLinkMenu::AttachSettingsContextMenu(
-			shortcutsBtn, u"fa/context-menu/shortcuts"_q, controller);
+			shortcutsRow, u"fa/context-menu/shortcuts"_q, controller);
 
-		SettingsMenuJsonSwitch(fa_context_menu_move_to_bottom, context_menu_shortcuts_at_bottom, u"fa/context-menu/shortcuts-bottom"_q);
-		Ui::AddDividerText(container, fatr::fa_context_menu_desc());
+		FA::Ui::AddCardDivider(shortcutsCard);
+
+		const auto bottomRow = FA::Ui::AddCardToggle(
+			shortcutsCard,
+			fatr::fa_context_menu_move_to_bottom(),
+			fatr::fa_context_menu_desc(),
+			settings.contextMenuShortcutsAtBottomValue(),
+			[&settings](bool enabled) {
+				settings.setContextMenuShortcutsAtBottom(enabled);
+			});
+		Settings::FADeepLinkMenu::AttachSettingsContextMenu(
+			bottomRow, u"fa/context-menu/shortcuts-bottom"_q, controller);
+
+		FA::Ui::AddModernSectionHeader(container, fatr::fa_shortcut_customization());
+		const auto slidersCard = FA::Ui::CreateCardContainer(container);
 
 		// Shortcut button size slider
-		const auto buttonSizeLabel = container->add(
+		const auto buttonSizeLabel = slidersCard->add(
 			object_ptr<Ui::LabelSimple>(
-				container,
+				slidersCard,
 				st::settingsAudioVolumeLabel),
 			st::settingsAudioVolumeLabelPadding);
-		const auto buttonSizeSlider = container->add(
-			object_ptr<Ui::MediaSlider>(
-				container,
-				st::settingsAudioVolumeSlider),
+		const auto buttonSizeSlider = FA::Ui::AddCardSlider(
+			slidersCard,
 			st::settingsAudioVolumeSliderPadding);
+		Settings::FADeepLinkMenu::AttachSettingsContextMenu(
+			buttonSizeSlider,
+			u"fa/context-menu/button-size"_q,
+			controller);
 		const auto updateButtonSizeLabel = [=](int value) {
 			buttonSizeLabel->setText(fatr::fa_shortcut_button_size(fatr::now).arg(value));
 		};
 		const auto updateButtonSize = [=](int value) {
 			updateButtonSizeLabel(value);
-			::FASettings::JsonSettings::Set("context_menu_shortcut_button_size", value);
-			::FASettings::JsonSettings::Write();
+			FASettings::FASettings::getInstance().setContextMenuShortcutButtonSize(value);
 		};
-		buttonSizeSlider->resize(st::settingsAudioVolumeSlider.seekSize);
 		buttonSizeSlider->setPseudoDiscrete(
-			41, // 24 to 64 = 41 values
+			41,
 			[](int val) { return val + 24; },
-			::FASettings::JsonSettings::GetInt("context_menu_shortcut_button_size"),
+			FASettings::FASettings::getInstance().contextMenuShortcutButtonSize(),
 			updateButtonSize);
-		updateButtonSizeLabel(::FASettings::JsonSettings::GetInt("context_menu_shortcut_button_size"));
+		updateButtonSizeLabel(FASettings::FASettings::getInstance().contextMenuShortcutButtonSize());
 		const auto resetButtonSize = Ui::CreateChild<Ui::IconButton>(
-			container,
+			slidersCard,
 			st::settingsSliderRestore);
 		rpl::combine(
 			buttonSizeLabel->geometryValue(),
-			container->widthValue()
+			slidersCard->widthValue()
 		) | rpl::on_next([=](QRect labelRect, int width) {
 			resetButtonSize->moveToRight(
 				st::settingsAudioVolumeLabelPadding.right(),
@@ -143,38 +134,40 @@ namespace Settings {
 			updateButtonSize(defaultValue);
 		});
 
+		FA::Ui::AddCardDivider(slidersCard);
+
 		// Shortcut icon size slider
-		const auto iconSizeLabel = container->add(
+		const auto iconSizeLabel = slidersCard->add(
 			object_ptr<Ui::LabelSimple>(
-				container,
+				slidersCard,
 				st::settingsAudioVolumeLabel),
 			st::settingsAudioVolumeLabelPadding);
-		const auto iconSizeSlider = container->add(
-			object_ptr<Ui::MediaSlider>(
-				container,
-				st::settingsAudioVolumeSlider),
+		const auto iconSizeSlider = FA::Ui::AddCardSlider(
+			slidersCard,
 			st::settingsAudioVolumeSliderPadding);
+		Settings::FADeepLinkMenu::AttachSettingsContextMenu(
+			iconSizeSlider,
+			u"fa/context-menu/icon-size"_q,
+			controller);
 		const auto updateIconSizeLabel = [=](int value) {
 			iconSizeLabel->setText(fatr::fa_shortcut_icon_size(fatr::now).arg(value));
 		};
 		const auto updateIconSize = [=](int value) {
 			updateIconSizeLabel(value);
-			::FASettings::JsonSettings::Set("context_menu_shortcut_icon_size", value);
-			::FASettings::JsonSettings::Write();
+			FASettings::FASettings::getInstance().setContextMenuShortcutIconSize(value);
 		};
-		iconSizeSlider->resize(st::settingsAudioVolumeSlider.seekSize);
 		iconSizeSlider->setPseudoDiscrete(
-			33, // 16 to 48 = 33 values
+			33,
 			[](int val) { return val + 16; },
-			::FASettings::JsonSettings::GetInt("context_menu_shortcut_icon_size"),
+			FASettings::FASettings::getInstance().contextMenuShortcutIconSize(),
 			updateIconSize);
-		updateIconSizeLabel(::FASettings::JsonSettings::GetInt("context_menu_shortcut_icon_size"));
+		updateIconSizeLabel(FASettings::FASettings::getInstance().contextMenuShortcutIconSize());
 		const auto resetIconSize = Ui::CreateChild<Ui::IconButton>(
-			container,
+			slidersCard,
 			st::settingsSliderRestore);
 		rpl::combine(
 			iconSizeLabel->geometryValue(),
-			container->widthValue()
+			slidersCard->widthValue()
 		) | rpl::on_next([=](QRect labelRect, int width) {
 			resetIconSize->moveToRight(
 				st::settingsAudioVolumeLabelPadding.right(),
@@ -187,38 +180,40 @@ namespace Settings {
 			updateIconSize(defaultValue);
 		});
 
+		FA::Ui::AddCardDivider(slidersCard);
+
 		// Shortcut spacing slider
-		const auto spacingLabel = container->add(
+		const auto spacingLabel = slidersCard->add(
 			object_ptr<Ui::LabelSimple>(
-				container,
+				slidersCard,
 				st::settingsAudioVolumeLabel),
 			st::settingsAudioVolumeLabelPadding);
-		const auto spacingSlider = container->add(
-			object_ptr<Ui::MediaSlider>(
-				container,
-				st::settingsAudioVolumeSlider),
+		const auto spacingSlider = FA::Ui::AddCardSlider(
+			slidersCard,
 			st::settingsAudioVolumeSliderPadding);
+		Settings::FADeepLinkMenu::AttachSettingsContextMenu(
+			spacingSlider,
+			u"fa/context-menu/spacing"_q,
+			controller);
 		const auto updateSpacingLabel = [=](int value) {
 			spacingLabel->setText(fatr::fa_shortcut_spacing(fatr::now).arg(value));
 		};
 		const auto updateSpacing = [=](int value) {
 			updateSpacingLabel(value);
-			::FASettings::JsonSettings::Set("context_menu_shortcut_spacing", value);
-			::FASettings::JsonSettings::Write();
+			FASettings::FASettings::getInstance().setContextMenuShortcutSpacing(value);
 		};
-		spacingSlider->resize(st::settingsAudioVolumeSlider.seekSize);
 		spacingSlider->setPseudoDiscrete(
-			25, // 0 to 24 = 25 values
+			25,
 			[](int val) { return val; },
-			::FASettings::JsonSettings::GetInt("context_menu_shortcut_spacing"),
+			FASettings::FASettings::getInstance().contextMenuShortcutSpacing(),
 			updateSpacing);
-		updateSpacingLabel(::FASettings::JsonSettings::GetInt("context_menu_shortcut_spacing"));
+		updateSpacingLabel(FASettings::FASettings::getInstance().contextMenuShortcutSpacing());
 		const auto resetSpacing = Ui::CreateChild<Ui::IconButton>(
-			container,
+			slidersCard,
 			st::settingsSliderRestore);
 		rpl::combine(
 			spacingLabel->geometryValue(),
-			container->widthValue()
+			slidersCard->widthValue()
 		) | rpl::on_next([=](QRect labelRect, int width) {
 			resetSpacing->moveToRight(
 				st::settingsAudioVolumeLabelPadding.right(),
@@ -231,38 +226,40 @@ namespace Settings {
 			updateSpacing(defaultValue);
 		});
 
+		FA::Ui::AddCardDivider(slidersCard);
+
 		// Shortcut horizontal padding slider
-		const auto hPaddingLabel = container->add(
+		const auto hPaddingLabel = slidersCard->add(
 			object_ptr<Ui::LabelSimple>(
-				container,
+				slidersCard,
 				st::settingsAudioVolumeLabel),
 			st::settingsAudioVolumeLabelPadding);
-		const auto hPaddingSlider = container->add(
-			object_ptr<Ui::MediaSlider>(
-				container,
-				st::settingsAudioVolumeSlider),
+		const auto hPaddingSlider = FA::Ui::AddCardSlider(
+			slidersCard,
 			st::settingsAudioVolumeSliderPadding);
+		Settings::FADeepLinkMenu::AttachSettingsContextMenu(
+			hPaddingSlider,
+			u"fa/context-menu/h-padding"_q,
+			controller);
 		const auto updateHPaddingLabel = [=](int value) {
 			hPaddingLabel->setText(fatr::fa_shortcut_horizontal_padding(fatr::now).arg(value));
 		};
 		const auto updateHPadding = [=](int value) {
 			updateHPaddingLabel(value);
-			::FASettings::JsonSettings::Set("context_menu_shortcut_horizontal_padding", value);
-			::FASettings::JsonSettings::Write();
+			FASettings::FASettings::getInstance().setContextMenuShortcutHorizontalPadding(value);
 		};
-		hPaddingSlider->resize(st::settingsAudioVolumeSlider.seekSize);
 		hPaddingSlider->setPseudoDiscrete(
-			17, // 0 to 16 = 17 values
+			17,
 			[](int val) { return val; },
-			::FASettings::JsonSettings::GetInt("context_menu_shortcut_horizontal_padding"),
+			FASettings::FASettings::getInstance().contextMenuShortcutHorizontalPadding(),
 			updateHPadding);
-		updateHPaddingLabel(::FASettings::JsonSettings::GetInt("context_menu_shortcut_horizontal_padding"));
+		updateHPaddingLabel(FASettings::FASettings::getInstance().contextMenuShortcutHorizontalPadding());
 		const auto resetHPadding = Ui::CreateChild<Ui::IconButton>(
-			container,
+			slidersCard,
 			st::settingsSliderRestore);
 		rpl::combine(
 			hPaddingLabel->geometryValue(),
-			container->widthValue()
+			slidersCard->widthValue()
 		) | rpl::on_next([=](QRect labelRect, int width) {
 			resetHPadding->moveToRight(
 				st::settingsAudioVolumeLabelPadding.right(),
@@ -275,38 +272,40 @@ namespace Settings {
 			updateHPadding(defaultValue);
 		});
 
+		FA::Ui::AddCardDivider(slidersCard);
+
 		// Shortcut vertical padding slider
-		const auto vPaddingLabel = container->add(
+		const auto vPaddingLabel = slidersCard->add(
 			object_ptr<Ui::LabelSimple>(
-				container,
+				slidersCard,
 				st::settingsAudioVolumeLabel),
 			st::settingsAudioVolumeLabelPadding);
-		const auto vPaddingSlider = container->add(
-			object_ptr<Ui::MediaSlider>(
-				container,
-				st::settingsAudioVolumeSlider),
+		const auto vPaddingSlider = FA::Ui::AddCardSlider(
+			slidersCard,
 			st::settingsAudioVolumeSliderPadding);
+		Settings::FADeepLinkMenu::AttachSettingsContextMenu(
+			vPaddingSlider,
+			u"fa/context-menu/v-padding"_q,
+			controller);
 		const auto updateVPaddingLabel = [=](int value) {
 			vPaddingLabel->setText(fatr::fa_shortcut_vertical_padding(fatr::now).arg(value));
 		};
 		const auto updateVPadding = [=](int value) {
 			updateVPaddingLabel(value);
-			::FASettings::JsonSettings::Set("context_menu_shortcut_vertical_padding", value);
-			::FASettings::JsonSettings::Write();
+			FASettings::FASettings::getInstance().setContextMenuShortcutVerticalPadding(value);
 		};
-		vPaddingSlider->resize(st::settingsAudioVolumeSlider.seekSize);
 		vPaddingSlider->setPseudoDiscrete(
-			17, // 0 to 16 = 17 values
+			17,
 			[](int val) { return val; },
-			::FASettings::JsonSettings::GetInt("context_menu_shortcut_vertical_padding"),
+			FASettings::FASettings::getInstance().contextMenuShortcutVerticalPadding(),
 			updateVPadding);
-		updateVPaddingLabel(::FASettings::JsonSettings::GetInt("context_menu_shortcut_vertical_padding"));
+		updateVPaddingLabel(FASettings::FASettings::getInstance().contextMenuShortcutVerticalPadding());
 		const auto resetVPadding = Ui::CreateChild<Ui::IconButton>(
-			container,
+			slidersCard,
 			st::settingsSliderRestore);
 		rpl::combine(
 			vPaddingLabel->geometryValue(),
-			container->widthValue()
+			slidersCard->widthValue()
 		) | rpl::on_next([=](QRect labelRect, int width) {
 			resetVPadding->moveToRight(
 				st::settingsAudioVolumeLabelPadding.right(),
@@ -319,38 +318,40 @@ namespace Settings {
 			updateVPadding(defaultValue);
 		});
 
+		FA::Ui::AddCardDivider(slidersCard);
+
 		// Shortcut corner radius slider
-		const auto cornerRadiusLabel = container->add(
+		const auto cornerRadiusLabel = slidersCard->add(
 			object_ptr<Ui::LabelSimple>(
-				container,
+				slidersCard,
 				st::settingsAudioVolumeLabel),
 			st::settingsAudioVolumeLabelPadding);
-		const auto cornerRadiusSlider = container->add(
-			object_ptr<Ui::MediaSlider>(
-				container,
-				st::settingsAudioVolumeSlider),
+		const auto cornerRadiusSlider = FA::Ui::AddCardSlider(
+			slidersCard,
 			st::settingsAudioVolumeSliderPadding);
+		Settings::FADeepLinkMenu::AttachSettingsContextMenu(
+			cornerRadiusSlider,
+			u"fa/context-menu/corner-radius"_q,
+			controller);
 		const auto updateCornerRadiusLabel = [=](int value) {
 			cornerRadiusLabel->setText(fatr::fa_shortcut_corner_radius(fatr::now).arg(value));
 		};
 		const auto updateCornerRadius = [=](int value) {
 			updateCornerRadiusLabel(value);
-			::FASettings::JsonSettings::Set("context_menu_shortcut_corner_radius", value);
-			::FASettings::JsonSettings::Write();
+			FASettings::FASettings::getInstance().setContextMenuShortcutCornerRadius(value);
 		};
-		cornerRadiusSlider->resize(st::settingsAudioVolumeSlider.seekSize);
 		cornerRadiusSlider->setPseudoDiscrete(
-			21, // 0 to 20 = 21 values
+			21,
 			[](int val) { return val; },
-			::FASettings::JsonSettings::GetInt("context_menu_shortcut_corner_radius"),
+			FASettings::FASettings::getInstance().contextMenuShortcutCornerRadius(),
 			updateCornerRadius);
-		updateCornerRadiusLabel(::FASettings::JsonSettings::GetInt("context_menu_shortcut_corner_radius"));
+		updateCornerRadiusLabel(FASettings::FASettings::getInstance().contextMenuShortcutCornerRadius());
 		const auto resetCornerRadius = Ui::CreateChild<Ui::IconButton>(
-			container,
+			slidersCard,
 			st::settingsSliderRestore);
 		rpl::combine(
 			cornerRadiusLabel->geometryValue(),
-			container->widthValue()
+			slidersCard->widthValue()
 		) | rpl::on_next([=](QRect labelRect, int width) {
 			resetCornerRadius->moveToRight(
 				st::settingsAudioVolumeLabelPadding.right(),
@@ -363,13 +364,32 @@ namespace Settings {
 			updateCornerRadius(defaultValue);
 		});
 
-		Ui::AddDividerText(container, fatr::fa_shortcut_customization_desc());
+		FA::Ui::AddModernSectionHeader(container, fatr::fa_context_menu_actions());
+		const auto actionsCard = FA::Ui::CreateCardContainer(container);
 
-		SettingsMenuJsonSwitch(fa_context_menu_reply_in_private, context_menu_reply_in_private, u"fa/context-menu/reply-private"_q);
-		Ui::AddDividerText(container, fatr::fa_context_menu_reply_in_private_desc());
+		const auto replyPrivateRow = FA::Ui::AddCardToggle(
+			actionsCard,
+			fatr::fa_context_menu_reply_in_private(),
+			fatr::fa_context_menu_reply_in_private_desc(),
+			settings.contextMenuReplyInPrivateValue(),
+			[&settings](bool enabled) {
+				settings.setContextMenuReplyInPrivate(enabled);
+			});
+		Settings::FADeepLinkMenu::AttachSettingsContextMenu(
+			replyPrivateRow, u"fa/context-menu/reply-private"_q, controller);
 
-		SettingsMenuJsonSwitch(fa_context_menu_forward_submenu, context_menu_forward_submenu, u"fa/context-menu/forward-submenu"_q);
-		Ui::AddDividerText(container, fatr::fa_context_menu_forward_submenu_desc());
+		FA::Ui::AddCardDivider(actionsCard);
+
+		const auto fwdSubmenuRow = FA::Ui::AddCardToggle(
+			actionsCard,
+			fatr::fa_context_menu_forward_submenu(),
+			fatr::fa_context_menu_forward_submenu_desc(),
+			settings.contextMenuForwardSubmenuValue(),
+			[&settings](bool enabled) {
+				settings.setContextMenuForwardSubmenu(enabled);
+			});
+		Settings::FADeepLinkMenu::AttachSettingsContextMenu(
+			fwdSubmenuRow, u"fa/context-menu/forward-submenu"_q, controller);
     }
 
     void FAContextMenu::SetupFAContextMenu(not_null<Ui::VerticalLayout *> container, not_null<Window::SessionController *> controller) {
@@ -385,5 +405,3 @@ namespace Settings {
         Ui::ResizeFitChild(this, content);
     }
 } // namespace Settings
-
-// thanks rabbitGram

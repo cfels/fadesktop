@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 */
 #include "ui/controls/userpic_button.h"
+#include "fa/ui/md3/fa_avatar_shape.h"
 
 #include "apiwrap.h"
 #include "api/api_peer_photo.h"
@@ -52,10 +53,9 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 #include "main/main_session.h"
 #include "apiwrap.h"
 #include "api/api_peer_photo.h"
-#include "styles/style_boxes.h"
 #include "styles/style_chat.h"
 #include "styles/style_menu_icons.h"
-#include "styles/style_premium.h"
+#include "styles/style_userpic_button.h"
 
 #include <QtGui/QClipboard>
 #include <QtGui/QGuiApplication>
@@ -373,7 +373,7 @@ void UserpicButton::choosePhotoLocally() {
 				? Api::PeerPhoto::EmojiListType::Profile
 				: Api::PeerPhoto::EmojiListType::Group),
 			done,
-			_peer ? (_peer->isForum() && !_peer->isBot()) : false);
+			useForumShape());
 	};
 	const auto addFromClipboard = [=](ChosenType type, tr::phrase<> text) {
 		if (const auto data = QGuiApplication::clipboard()->mimeData()) {
@@ -722,7 +722,21 @@ void UserpicButton::paintUserpicFrame(Painter &p, QPoint photoPosition) {
 		}
 		auto frame = _streamed->frame(request);
 
-		if (_shape == PeerUserpicShape::Monoforum) {
+		if (_shape == PeerUserpicShape::Material) {
+			if (_materialMask.isNull()) {
+				_materialMask = FA::Ui::MaterialShapeMask(request.resize);
+			}
+			constexpr auto format = QImage::Format_ARGB32_Premultiplied;
+			if (frame.format() != format) {
+				frame = std::move(frame).convertToFormat(format);
+			}
+			auto q = QPainter(&frame);
+			q.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+			q.drawImage(
+				QRect(QPoint(), frame.size() / frame.devicePixelRatio()),
+				_materialMask);
+			q.end();
+		} else if (_shape == PeerUserpicShape::Monoforum) {
 			if (_monoforumMask.isNull()) {
 				_monoforumMask = MonoforumShapeMask(request.resize);
 			}
@@ -757,9 +771,15 @@ QPoint UserpicButton::countPhotoPosition() const {
 }
 
 QImage UserpicButton::prepareRippleMask() const {
-	return Ui::RippleAnimation::EllipseMask(QSize(
-		_st.photoSize,
-		_st.photoSize));
+	const auto size = QSize(_st.photoSize, _st.photoSize);
+	if (_shape == PeerUserpicShape::Material) {
+		return FA::Ui::MaterialShapeMask(size * style::DevicePixelRatio());
+	}
+	return useForumShape()
+		? Ui::RippleAnimation::RoundRectMask(
+			size,
+			int(_st.photoSize * Ui::ForumUserpicRadiusMultiplier()))
+		: Ui::RippleAnimation::EllipseMask(size);
 }
 
 QPoint UserpicButton::prepareRippleStartPosition() const {
@@ -970,9 +990,8 @@ void UserpicButton::processNewPeerPhoto() {
 bool UserpicButton::useForumShape() const {
 	return (_shape == PeerUserpicShape::Forum)
 		|| (_peer
-			&& _peer->isForum()
 			&& _shape == PeerUserpicShape::Auto
-			&& !_peer->isBot());
+			&& _peer->userpicShape() == PeerUserpicShape::Forum);
 }
 
 void UserpicButton::grabOldUserpic() {
@@ -1195,7 +1214,15 @@ void UserpicButton::fillShape(QPainter &p, QBrush brush) const {
 	p.setPen(Qt::NoPen);
 	p.setBrush(brush);
 	const auto size = _st.photoSize;
-	if (useForumShape()) {
+	if (_shape == PeerUserpicShape::Material) {
+		auto mask = FA::Ui::MaterialShapeMask(QSize(size, size) * style::DevicePixelRatio());
+		mask.setDevicePixelRatio(style::DevicePixelRatio());
+		auto q = QPainter(&mask);
+		q.setCompositionMode(QPainter::CompositionMode_SourceIn);
+		q.fillRect(QRect(0, 0, size, size), brush);
+		q.end();
+		p.drawImage(0, 0, mask);
+	} else if (useForumShape()) {
 		const auto radius = size * Ui::ForumUserpicRadiusMultiplier();
 		p.drawRoundedRect(0, 0, size, size, radius, radius);
 	} else {
@@ -1231,7 +1258,9 @@ void UserpicButton::prepareUserpicPixmap() {
 						QSize(size, size) * ratio,
 						Qt::IgnoreAspectRatio,
 						Qt::SmoothTransformation);
-					image = useForumShape()
+					image = (_shape == PeerUserpicShape::Material)
+						? FA::Ui::ApplyMaterialShape(std::move(image))
+						: useForumShape()
 						? Images::Round(
 							std::move(image),
 							Images::CornersMask(size
@@ -1247,7 +1276,16 @@ void UserpicButton::prepareUserpicPixmap() {
 					((user && user->isInaccessible())
 						? Ui::EmptyUserpic::InaccessibleName()
 						: _peer->name()));
-				if (useForumShape()) {
+				if (_shape == PeerUserpicShape::Material) {
+					auto image = QImage(QSize(size, size) * style::DevicePixelRatio(), QImage::Format_ARGB32_Premultiplied);
+					image.fill(Qt::transparent);
+					auto q = QPainter(&image);
+					empty.paintSquare(q, 0, 0, size, size);
+					q.end();
+					image = FA::Ui::ApplyMaterialShape(std::move(image));
+					image.setDevicePixelRatio(style::DevicePixelRatio());
+					p.drawImage(0, 0, image);
+				} else if (useForumShape()) {
 					empty.paintRounded(
 						p,
 						0,

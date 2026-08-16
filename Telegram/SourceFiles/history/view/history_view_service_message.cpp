@@ -440,7 +440,10 @@ QRect Service::innerGeometry() const {
 	return countGeometry();
 }
 
-bool Service::consumeHorizontalScroll(QPoint position, int delta) {
+bool Service::consumeHorizontalScroll(
+		QPoint position,
+		int delta,
+		Qt::ScrollPhase phase) {
 	if (const auto media = this->media()) {
 		return media->consumeHorizontalScroll(position, delta);
 	}
@@ -870,7 +873,7 @@ EmptyPainter::EmptyPainter(not_null<History*> history)
 	if (NeedAboutGroup(_history)) {
 		fillAboutGroup();
 	} else if (_history->peer->isUser()
-		&& ::FASettings::JsonSettings::GetBool("disable_greeting_sticker")) {
+		&& FASettings::FASettings::getInstance().disableGreetingSticker()) {
 		SetText(_header, tr::lng_chat_intro_default_title(tr::now));
 	}
 }

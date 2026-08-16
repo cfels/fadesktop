@@ -1084,7 +1084,7 @@ private:
 
 	SettingsProxy _proxy;
 
-	rpl::variable<bool> _adaptiveForWide = true;
+	rpl::variable<bool> _adaptiveForWide = false;
 	bool _moderateModeEnabled = false;
 	rpl::variable<float64> _songVolume = kDefaultVolume;
 	rpl::variable<float64> _videoVolume = kDefaultVolume;
@@ -1183,7 +1183,7 @@ private:
 #endif // Q_OS_MAC
 	HistoryView::DoubleClickQuickAction _chatQuickAction
 		= HistoryView::DoubleClickQuickAction();
-	bool _translateButtonEnabled = false;
+	bool _translateButtonEnabled = true;
 	bool _usePlatformTranslation = false;
 	rpl::variable<bool> _translateChatEnabled = true;
 	rpl::variable<int> _translateToRaw = 0;
@@ -1205,7 +1205,7 @@ private:
 	Media::VideoQuality _videoQuality;
 	rpl::variable<bool> _chatFiltersHorizontal = false;
 	rpl::variable<Ui::ChatsFiltersTabsMode> _chatFiltersTabsMode
-		= Ui::ChatsFiltersTabsMode::TextOnly;
+		= Ui::ChatsFiltersTabsMode::Default;
 	base::flat_map<QByteArray, QByteArray> _prefs;
 
 	bool _tabbedReplacedWithInfo = false; // per-window

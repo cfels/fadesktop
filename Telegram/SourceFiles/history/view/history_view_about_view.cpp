@@ -57,6 +57,7 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 #include "styles/style_chat.h"
 #include "styles/style_chat_helpers.h" // GroupCallUserpics
 #include "styles/style_credits.h"
+#include "styles/style_history_view_about_view.h"
 #include "styles/style_menu_icons.h"
 
 namespace HistoryView {
@@ -269,7 +270,7 @@ auto GenerateChatIntro(
 				st::defaultTextStyle,
 				links));
 		};
-		const auto disableGreeting = ::FASettings::JsonSettings::GetBool("disable_greeting_sticker");
+		const auto disableGreeting = FASettings::FASettings::getInstance().disableGreetingSticker();
 		const auto title = data.customPhrases()
 			? data.title
 			: tr::lng_chat_intro_default_title(tr::now);
@@ -759,7 +760,7 @@ bool AboutView::refresh() {
 				makeIntro(user);
 			} else if (const auto stars = user->starsPerMessageChecked()) {
 				setItem(makeStarsPerMessage(stars), nullptr);
-			} else if (!::FASettings::JsonSettings::GetBool("disable_greeting_sticker")) {
+			} else if (!FASettings::FASettings::getInstance().disableGreetingSticker()) {
 				makeIntro(user);
 			}
 			return true;

@@ -5,6 +5,7 @@ the unofficial desktop client based on Telegram Desktop.
 For license and copyright information please follow this link:
 https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 */
+#include "fa/ui/md3/fa_cards.h"
 #include "info/profile/info_profile_inner_widget.h"
 
 #include "info/info_controller.h"
@@ -59,6 +60,7 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 
 namespace Info {
 namespace Profile {
+namespace FAUi = ::FA::Ui;
 
 namespace {
 
@@ -585,6 +587,7 @@ base::weak_qptr<Ui::RpWidget> InnerWidget::createPinnedToTop(
 		content->setupStandaloneGroupControl(
 			members->groupByRoleValue(),
 			members->groupByRoleAvailableValue(),
+			members->rowsVisibleValue(),
 			crl::guard(members, [=](bool grouped) {
 				members->setGroupByRole(grouped);
 			}));

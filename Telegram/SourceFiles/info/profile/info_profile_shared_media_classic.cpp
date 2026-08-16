@@ -5,6 +5,7 @@ the official desktop application for the Telegram messaging service.
 For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
+#include "fa/ui/md3/fa_cards.h"
 #include "info/profile/info_profile_shared_media_classic.h"
 
 #include "core/ui_integration.h"
@@ -35,6 +36,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_info.h"
 
 namespace Info::Profile {
+namespace FAUi = ::FA::Ui;
 namespace {
 
 [[nodiscard]] not_null<Ui::SettingsButton*> AddCommonGroupsButton(
@@ -253,7 +255,10 @@ object_ptr<Ui::SlideWrap<Ui::RpWidget>> SetupSharedMediaClassic(
 	using MediaType = Media::Type;
 
 	const auto peer = sublist ? sublist->sublistPeer() : profilePeer;
-	auto content = object_ptr<Ui::VerticalLayout>(parent);
+	auto result = object_ptr<Ui::SlideWrap<Ui::VerticalLayout>>(
+		parent,
+		object_ptr<Ui::VerticalLayout>(parent));
+	const auto content = FAUi::CreateCardContainer(result->entity(), 4, 4);
 	const auto addMediaButton = [&](
 			MediaType type,
 			const style::icon &icon) {
@@ -362,14 +367,10 @@ object_ptr<Ui::SlideWrap<Ui::RpWidget>> SetupSharedMediaClassic(
 		addCommonGroupsButton(user, st::infoIconMediaGroup);
 	}
 
-	auto result = object_ptr<Ui::SlideWrap<Ui::VerticalLayout>>(
-		parent,
-		object_ptr<Ui::VerticalLayout>(parent));
 	result->setDuration(
 		st::infoSlideDuration
 	)->toggleOn(
 		tracker.atLeastOneShownValue());
-	result->entity()->add(std::move(content));
 
 	return result;
 }

@@ -117,7 +117,7 @@ jobs:
       - name: Build release file list
         id: release-files
         run: |
-          FILES="artifacts/linux/fagram-${{ inputs.tagname }}.tar.gz
+          FILES="artifacts/linux/fagram-${{ inputs.tagname }}.tar.zst
           artifacts/windows/FAgram_Win-x64_${{ inputs.tagname }}_portable.zip
           artifacts/windows-installer/*.exe"
           if [ -n "${{ inputs.mac_run_id }}" ] && [ -f "artifacts/mac/fagram-mac-${{ inputs.tagname }}.dmg" ]; then
@@ -153,9 +153,26 @@ jobs:
           event-type: new-release
 
   update-scoop:
-    name: Update Scoop Manifest
+    name: Scoop Manifest
     needs: create-release
     uses: ./.github/workflows/scoop-manifest.yml
+    with:
+      release_tag: ${{ inputs.tagname }}
+    secrets: inherit
+
+  update-homebrew:
+    name: Homebrew Cask
+    needs: create-release
+    uses: ./.github/workflows/homebrew-cask.yml
+    if: ${{ inputs.mac_run_id != '' }}
+    with:
+      release_tag: ${{ inputs.tagname }}
+    secrets: inherit
+
+  update-nix:
+    name: Nix Flake
+    needs: create-release
+    uses: ./.github/workflows/nix-flake.yml
     with:
       release_tag: ${{ inputs.tagname }}
     secrets: inherit

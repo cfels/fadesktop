@@ -35,7 +35,6 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 #include "ui/wrap/slide_wrap.h"
 #include "styles/style_chat_helpers.h"
 #include "styles/style_layers.h"
-#include "styles/style_boxes.h"
 
 namespace {
 
@@ -160,7 +159,7 @@ void DeleteMessagesBox::prepare() {
 		if (_revokeJustClearForChannel) {
 		} else if (auto revoke = revokeText(peer)) {
 			const auto revokeByDefault
-				= FASettings::JsonSettings::GetBool("delete_for_everyone");
+				= FASettings::FASettings::getInstance().deleteForEveryone();
 			_revoke.create(
 				this,
 				revoke->checkbox,
@@ -194,7 +193,7 @@ void DeleteMessagesBox::prepare() {
 			} else if (auto revoke = revokeText(peer)) {
 				const auto &settings = Core::App().settings();
 				const auto revokeByDefault
-					= FASettings::JsonSettings::GetBool("delete_for_everyone")
+					= FASettings::FASettings::getInstance().deleteForEveryone()
 					? true
 					: !settings.rememberedDeleteMessageOnlyForYou();
 				_revoke.create(

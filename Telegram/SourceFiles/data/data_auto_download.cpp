@@ -37,22 +37,6 @@ auto enums_view(int till) {
 	return enums_view<Enum>(0, till);
 }
 
-void SetDefaultsForSource(Full &data, Source source) {
-	data.setBytesLimit(source, Type::Photo, kDefaultMaxSize);
-	data.setBytesLimit(source, Type::VoiceMessage, kDefaultMaxSize);
-	data.setBytesLimit(
-		source,
-		Type::AutoPlayVideoMessage,
-		kDefaultAutoPlaySize);
-	data.setBytesLimit(source, Type::AutoPlayGIF, kDefaultAutoPlaySize);
-	const auto channelsFileLimit = (source == Source::Channel)
-		? 0
-		: kDefaultMaxSize;
-	data.setBytesLimit(source, Type::File, channelsFileLimit);
-	data.setBytesLimit(source, Type::AutoPlayVideo, kDefaultAutoPlaySize);
-	data.setBytesLimit(source, Type::Music, channelsFileLimit);
-}
-
 const Full &Defaults() {
 	static auto Result = [] {
 		auto result = Full::FullDisabled();
@@ -103,6 +87,35 @@ Type AutoPlayTypeFromDocument(not_null<DocumentData*> document) {
 }
 
 } // namespace
+
+void SetDefaultsForSource(Full &data, Source source) {
+	data.setBytesLimit(source, Type::Photo, kDefaultMaxSize);
+	data.setBytesLimit(source, Type::VoiceMessage, kDefaultMaxSize);
+	data.setBytesLimit(
+		source,
+		Type::AutoPlayVideoMessage,
+		kDefaultAutoPlaySize);
+	data.setBytesLimit(source, Type::AutoPlayGIF, kDefaultAutoPlaySize);
+	const auto channelsFileLimit = (source == Source::Channel)
+		? 0
+		: kDefaultMaxSize;
+	data.setBytesLimit(source, Type::File, channelsFileLimit);
+	data.setBytesLimit(source, Type::AutoPlayVideo, kDefaultAutoPlaySize);
+	data.setBytesLimit(source, Type::Music, channelsFileLimit);
+}
+
+void SetDisabledForSource(Full &data, Source source) {
+	for (const auto type : enums_view<Type>(kTypesCount)) {
+		data.setBytesLimit(source, type, 0);
+	}
+}
+
+bool HasEnabledTypes(const Full &data, Source source) {
+	return ranges::any_of(enums_view<Type>(kTypesCount), [&](Type type) {
+		return (ranges::find(kStreamedTypes, type) == end(kStreamedTypes))
+			&& (data.bytesLimit(source, type) > 0);
+	});
+}
 
 void Single::setBytesLimit(int64 bytesLimit) {
 	Expects(bytesLimit >= 0 && bytesLimit <= kMaxBytesLimit);
@@ -205,7 +218,7 @@ void Full::setBytesLimit(Source source, Type type, int64 bytesLimit) {
 }
 
 bool Full::shouldDownload(Source source, Type type, int64 fileSize) const {
-	if (FASettings::JsonSettings::GetBool(u"disable_auto_download"_q)
+	if (FASettings::FASettings::getInstance().disableAutoDownload()
 	) {
 		return false;
 	}
@@ -345,7 +358,7 @@ bool Should(
 		const Full &data,
 		Source source,
 		not_null<DocumentData*> document) {
-	if (FASettings::JsonSettings::GetBool(u"disable_auto_download"_q)) {
+	if (FASettings::FASettings::getInstance().disableAutoDownload()) {
 		return false;
 	}
 	if (document->sticker() || document->isGifv()) {
@@ -390,7 +403,7 @@ bool Should(
 bool Should(
 		const Full &data,
 		not_null<DocumentData*> document) {
-	if (FASettings::JsonSettings::GetBool(u"disable_auto_download"_q)) {
+	if (FASettings::FASettings::getInstance().disableAutoDownload()) {
 		return false;
 	}
 	if (document->sticker()) {
@@ -405,7 +418,7 @@ bool Should(
 		const Full &data,
 		not_null<PeerData*> peer,
 		not_null<PhotoData*> photo) {
-	if (FASettings::JsonSettings::GetBool(u"disable_auto_download"_q)) {
+	if (FASettings::FASettings::getInstance().disableAutoDownload()) {
 		return false;
 	}
 	const auto override = data.peerOverride(peer->id);
@@ -428,7 +441,7 @@ bool ShouldAutoPlay(
 		const Full &data,
 		not_null<PeerData*> peer,
 		not_null<DocumentData*> document) {
-	if (FASettings::JsonSettings::GetBool(u"disable_auto_download"_q)) {
+	if (FASettings::FASettings::getInstance().disableAutoDownload()) {
 		return false;
 	}
 	if (document->sticker()) {
@@ -454,7 +467,7 @@ bool ShouldAutoPlay(
 		const Full &data,
 		not_null<PeerData*> peer,
 		not_null<PhotoData*> photo) {
-	if (FASettings::JsonSettings::GetBool(u"disable_auto_download"_q)) {
+	if (FASettings::FASettings::getInstance().disableAutoDownload()) {
 		return false;
 	}
 	if (!photo->hasVideo()) {

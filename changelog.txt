@@ -1,3 +1,37 @@
+2.4.0 (16.08.26)
+
+- Material Design 3 UI
+- GoogleSansFlex as default font
+- Toggle switch for share menu folder icons
+- Some UI enhancements
+
+2.3.6 (12.08.26)
+
+- Refactored FAsettings implementation
+- Enabled Translate button by default
+- Fixed admin & recent actions icon position
+- Fixed startup crash on X11 display servers
+- Fixed reference names for macos OTA
+- Updated Spanish translations
+- Bug fixes
+
+2.3.5 (09.08.26)
+
+- Updated tdesktop to v7.0.9
+- Replace GoogleAppTranslator with multi-provider engine
+- Updated FAsettings implementation
+- Display full timestamps in last seen status
+- Show forwarded message date in title
+- Enable delete for everyone by default
+- Disable adaptive layout for wide screens by default
+- Disable greeting stickers in chat intros
+- Option to hide archived stories
+- Remove solar icons due to inconsistency
+- Remove hide folder tabs titles option 
+- Re-use menu icons for topbar recent actions and admin instead of custom ones
+- Switch to zstd for better tarball compression
+- Bug fixes
+
 2.3.4 (23.07.26)
 
 - Fix startup crash

@@ -8,7 +8,8 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 #include "core/application.h"
 
 #include "fa/lang/fa_lang.h"
-
+#include "fa/settings/fa_settings.h"
+#include "fa/utils/fa_icon_pack.h"
 #include "data/data_abstract_structure.h"
 #include "data/data_channel.h"
 #include "data/data_forum.h"
@@ -96,7 +97,7 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 #include "ui/accessible/ui_accessible_factory.h"
 #include "ui/boxes/confirm_box.h"
 #include "core/cached_webview_availability.h"
-#include "styles/style_window.h"
+#include "test/test_agent.h"
 
 #include <QtCore/QStandardPaths>
 #include <QtCore/QMimeDatabase>
@@ -266,6 +267,9 @@ Application::~Application() {
 }
 
 void Application::run() {
+	FASettings::FASettings::load();
+	FAIcons::InitIconPack();
+
 	// Depends on OpenSSL on macOS, so on ThirdParty::start().
 	// Depends on notifications settings.
 	_notifications = std::make_unique<Window::Notifications::System>();
@@ -281,6 +285,8 @@ void Application::run() {
 
 	style::SetCustomFont(settings().customFontFamily());
 	style::internal::StartFonts();
+
+	Test::ApplyStartupOverrides();
 
 	ValidateScale();
 
@@ -433,6 +439,9 @@ void Application::run() {
 	}
 
 	processCreatedWindow(_lastActivePrimaryWindow);
+
+	Test::Fire(u"launch_finished"_q);
+	Test::Start();
 }
 
 void Application::autoRegisterUrlScheme() {
@@ -1151,6 +1160,9 @@ bool Application::canApplyLangPackWithoutRestart() const {
 }
 
 void Application::checkStartUrls() {
+	if (_setupEmailLock.current()) {
+		return;
+	}
 	if (!Core::App().passcodeLocked()) {
 		cRefStartUrls() = ranges::views::all(
 			cRefStartUrls()
@@ -1322,6 +1334,7 @@ rpl::producer<bool> Application::passcodeLockValue() const {
 
 void Application::lockBySetupEmail() {
 	_setupEmailLock = true;
+	closeAdditionalWindows();
 	enumerateWindows([&](not_null<Window::Controller*> w) {
 		w->setupSetupEmailLock();
 	});
@@ -1332,6 +1345,7 @@ void Application::unlockSetupEmail() {
 	enumerateWindows([&](not_null<Window::Controller*> w) {
 		w->clearSetupEmailLock();
 	});
+	checkStartUrls();
 }
 
 bool Application::someSessionExists() const {

@@ -1243,6 +1243,7 @@ void Settings::addFromSerialized(const QByteArray &serialized) {
 		const auto uncheckedChatFiltersTabsMode = static_cast<Mode>(
 			chatFiltersTabsMode);
 		switch (uncheckedChatFiltersTabsMode) {
+		case Mode::Default:
 		case Mode::TextOnly:
 		case Mode::TextAndIcons:
 		case Mode::IconsOnly:
@@ -1655,7 +1656,7 @@ void Settings::setLegacyEmojiVariants(QMap<QString, int> data) {
 }
 
 void Settings::resetOnLastLogout() {
-	_adaptiveForWide = true;
+	_adaptiveForWide = false;
 	_moderateModeEnabled = false;
 
 	_songVolume = kDefaultVolume;
@@ -1742,7 +1743,7 @@ void Settings::resetOnLastLogout() {
 	_recordVideoMessages = false;
 	_videoQuality = {};
 	_chatFiltersHorizontal = false;
-	_chatFiltersTabsMode = Ui::ChatsFiltersTabsMode::TextOnly;
+	_chatFiltersTabsMode = Ui::ChatsFiltersTabsMode::Default;
 	_pullToNextChannel = true;
 	_quickDialogAction = Dialogs::Ui::QuickDialogAction::Disabled;
 	_notificationsVolume = 100;
