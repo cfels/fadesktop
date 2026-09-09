@@ -34,11 +34,13 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 #include "data/data_session.h"
 #include "data/data_changes.h"
 #include "data/stickers/data_custom_emoji.h"
+#include "base/qt/qt_key_modifiers.h"
 #include "base/unixtime.h"
 #include "styles/style_layers.h"
 #include "styles/style_boxes.h"
 #include "styles/style_dialogs.h"
 #include "styles/style_widgets.h"
+#include "styles/style_fa_styles.h"
 
 #include <xxhash.h> // XXH64.
 #include <QtWidgets/QApplication>
@@ -373,7 +375,7 @@ void PeerListBox::peerListSetRowChecked(
 		peerListUpdateRow(row);
 
 		// This call deletes row from _searchRows.
-		if (_select && trackSelected) {
+		if (_select && trackSelected && !base::IsShiftPressed()) {
 			_select->entity()->clearQuery();
 		}
 	} else {
@@ -935,6 +937,12 @@ int PeerListRow::paintNameIconGetWidth(
 		.verified = &(selected
 			? st::dialogsVerifiedIconOver
 			: st::dialogsVerifiedIcon),
+		.fagramOfficial = &(selected
+			? st::dialogsFAgramOfficialIcon.over
+			: st::dialogsFAgramOfficialIcon.icon),
+		.fagramSupporter = &(selected
+			? st::dialogsFAgramSupporterIcon.over
+			: st::dialogsFAgramSupporterIcon.icon),
 		.premium = &(selected
 			? st::dialogsPremiumIcon.over
 			: st::dialogsPremiumIcon.icon),
@@ -2421,8 +2429,6 @@ void PeerListContent::searchQueryChanged(QString query) {
 	if (_normalizedSearchQuery != normalizedQuery) {
 		setSearchQuery(query, normalizedQuery);
 		if (_controller->searchInLocal() && !searchWordsList.isEmpty()) {
-			Assert(_hiddenRows.empty() || _ignoreHiddenRowsOnSearch);
-
 			auto minimalList = (const std::vector<not_null<PeerListRow*>>*)nullptr;
 			for (const auto &searchWord : searchWordsList) {
 				auto searchWordStart = searchWord[0].toLower();
@@ -2458,7 +2464,7 @@ void PeerListContent::searchQueryChanged(QString query) {
 
 				_filterResults.reserve(minimalList->size());
 				for (const auto &row : *minimalList) {
-					if (allSearchWordsInNames(row)) {
+					if (!row->hidden() && allSearchWordsInNames(row)) {
 						_filterResults.push_back(row);
 					}
 				}
@@ -2472,8 +2478,6 @@ void PeerListContent::searchQueryChanged(QString query) {
 }
 
 std::unique_ptr<PeerListState> PeerListContent::saveState() const {
-	Expects(_hiddenRows.empty());
-
 	auto result = std::make_unique<PeerListState>();
 	result->controllerState
 		= std::make_unique<PeerListController::SavedStateBase>();

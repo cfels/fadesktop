@@ -8,6 +8,7 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 #include "info/info_top_bar.h"
 
 #include "fa/settings/fa_settings.h"
+#include "fa/ui/md3/fa_top_bar.h"
 
 #include "dialogs/ui/dialogs_stories_list.h"
 #include "lang/lang_keys.h"
@@ -140,6 +141,10 @@ void TopBar::enableBackButton() {
 	_back->entity()->clicks(
 	) | rpl::to_empty
 	| rpl::start_to_stream(_backClicks, _back->lifetime());
+	_back->widthValue(
+	) | rpl::on_next([this] {
+		updateControlsGeometry(width());
+	}, lifetime());
 	registerToggleControlCallback(_back.data(), [=] {
 		return !selectionMode();
 	});
@@ -319,7 +324,7 @@ void TopBar::createSearchView(
 	widthValue(
 	) | rpl::on_next([=](int newWidth) {
 		auto left = _back
-			? _st.back.width
+			? FA::Ui::TopBarBackPillSkip()
 			: _st.titlePosition.x();
 		wrap->setGeometryToLeft(
 			left,
@@ -371,25 +376,19 @@ void TopBar::updateControlsGeometry(int newWidth) {
 }
 
 void TopBar::updateDefaultControlsGeometry(int newWidth) {
-	auto right = 0;
-	for (auto &button : _buttons) {
-		if (!button) {
-			continue;
-		}
-		button->moveToRight(right, 0, newWidth);
-		right += button->width();
-	}
-	if (_back) {
-		_back->setGeometryToLeft(
-			0,
-			0,
-			newWidth - right,
-			_back->height(),
-			newWidth);
-	}
+	const auto right = FA::Ui::LayoutTopBarPillButtons(
+		newWidth,
+		_st.height,
+		_buttons);
+
+	const auto left = FA::Ui::LayoutTopBarBackButton(
+		newWidth,
+		_st.height,
+		_back.data());
+
 	if (_title) {
-		const auto x = _back
-			? _st.back.width
+		const auto x = (left > 0)
+			? left
 			: _subtitle
 			? _st.titleWithSubtitlePosition.x()
 			: _st.titlePosition.x();
@@ -400,8 +399,8 @@ void TopBar::updateDefaultControlsGeometry(int newWidth) {
 		_title->entity()->resizeToWidth(available);
 		_title->moveToLeft(x, y, newWidth);
 		if (_subtitle) {
-			const auto subtitleX = _back
-				? _st.back.width
+			const auto subtitleX = (left > 0)
+				? left
 				: _st.subtitlePosition.x();
 			_subtitle->entity()->resizeToWidth(
 				std::max(newWidth - right - subtitleX, 0));
@@ -452,16 +451,9 @@ void TopBar::updateStoriesGeometry(int newWidth) {
 		return;
 	}
 
-	auto right = 0;
-	for (auto &button : _buttons) {
-		if (!button) {
-			continue;
-		}
-		button->moveToRight(right, 0, newWidth);
-		right += button->width();
-	}
 	const auto &small = st::dialogsStories;
-	const auto wrapLeft = (_back ? _st.back.width : 0);
+	const auto backSkip = _back ? FA::Ui::TopBarBackPillSkip() : 0;
+	const auto wrapLeft = backSkip;
 	const auto left = _back
 		? 0
 		: (_st.titlePosition.x() - small.left - small.photoLeft);
@@ -496,6 +488,15 @@ void TopBar::paintEvent(QPaintEvent *e) {
 			rect(),
 			RectPart::TopLeft | RectPart::TopRight);
 	}
+
+	FA::Ui::PaintTopBarPill(
+		p,
+		width(),
+		_st.height,
+		_buttons,
+		_back.data(),
+		_searchModeEnabled,
+		selectionMode());
 }
 
 void TopBar::highlight() {

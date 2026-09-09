@@ -20,6 +20,7 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 #include "ui/text/text_custom_emoji.h"
 #include "ui/unread_badge_paint.h"
 #include "styles/style_dialogs.h"
+#include "fa/features/badges/badge_helpers.h"
 
 namespace Ui {
 namespace {
@@ -119,6 +120,7 @@ struct PeerBadge::EmojiStatus {
 	QPoint lastPosition;
 	QColor lastColor;
 	int skip = 0;
+	bool painted = false;
 };
 
 struct PeerBadge::BotVerifiedData {
@@ -240,6 +242,9 @@ int PeerBadge::drawGetWidth(Painter &p, Descriptor &&descriptor) {
 	const auto peer = descriptor.peer;
 	if ((descriptor.scam && (peer->isScam() || peer->isFake()))
 		|| (descriptor.direct && peer->isMonoforum())) {
+		if (_emojiStatus) {
+			_emojiStatus->painted = false;
+		}
 		return drawTextBadge(p, descriptor);
 	}
 	const auto verifyCheck = descriptor.verified && peer->isVerified();
@@ -252,6 +257,21 @@ int PeerBadge::drawGetWidth(Painter &p, Descriptor &&descriptor) {
 		&& !emojiStatus
 		&& peer->isPremium();
 
+	const auto faBadge = FA::Badges::ComputeBadgeContent(peer).badge;
+	using FAType = Info::Profile::BadgeType;
+	const auto paintFAOfficial = descriptor.fagramOfficial
+		&& (faBadge == FAType::FAgramOfficial);
+	const auto paintFASupporter = descriptor.fagramSupporter
+		&& (faBadge == FAType::FAgramSupporter);
+	const auto paintFA = paintFAOfficial || paintFASupporter;
+
+	auto faWidth = 0;
+	if (paintFAOfficial) {
+		faWidth = descriptor.fagramOfficial->width();
+	} else if (paintFASupporter) {
+		faWidth = descriptor.fagramSupporter->width();
+	}
+
 	const auto paintVerify = verifyCheck
 		&& (descriptor.prioritizeVerification
 			|| descriptor.bothVerifyAndStatus
@@ -260,20 +280,51 @@ int PeerBadge::drawGetWidth(Painter &p, Descriptor &&descriptor) {
 		&& (!paintVerify || descriptor.bothVerifyAndStatus);
 	const auto paintStar = premiumStar && !paintVerify;
 
+	const auto verifyWidth = paintVerify ? descriptor.verified->width() : 0;
+	const auto verifyAfterEmojiWidth = (paintVerify && !paintFA)
+		? verifyWidth
+		: 0;
+
 	auto result = 0;
 	if (paintEmoji) {
 		auto &rectForName = descriptor.rectForName;
-		const auto verifyWidth = descriptor.verified->width();
-		if (paintVerify) {
-			rectForName.setWidth(rectForName.width() - verifyWidth);
+		if (verifyAfterEmojiWidth) {
+			rectForName.setWidth(rectForName.width() - verifyAfterEmojiWidth);
+		}
+		if (paintFA) {
+			rectForName.setWidth(rectForName.width() - faWidth);
 		}
 		result += drawPremiumEmojiStatus(p, descriptor);
-		if (!paintVerify) {
+		if (!paintVerify && !paintFA) {
 			return result;
 		}
-		rectForName.setWidth(rectForName.width() + verifyWidth);
+		if (verifyAfterEmojiWidth) {
+			rectForName.setWidth(rectForName.width() + verifyAfterEmojiWidth);
+		}
+		if (paintFA) {
+			rectForName.setWidth(rectForName.width() + faWidth);
+		}
 		descriptor.nameWidth += result;
+	} else if (_emojiStatus) {
+		_emojiStatus->painted = false;
 	}
+
+	if (paintFA) {
+		if (paintStar) {
+			auto &rectForName = descriptor.rectForName;
+			rectForName.setWidth(rectForName.width() - faWidth);
+			result += drawPremiumStar(p, descriptor);
+			rectForName.setWidth(rectForName.width() + faWidth);
+			descriptor.nameWidth += result;
+		}
+		if (paintFAOfficial) {
+			result += drawFAgramOfficial(p, descriptor);
+		} else {
+			result += drawFAgramSupporter(p, descriptor);
+		}
+		return result;
+	}
+
 	if (paintVerify) {
 		result += drawVerifyCheck(p, descriptor);
 		return result;
@@ -366,6 +417,7 @@ int PeerBadge::drawPremiumEmojiStatus(
 		iconx - 2 * _emojiStatus->skip,
 		icony + _emojiStatus->skip);
 	_emojiStatus->lastColor = (*descriptor.premiumFg)->c;
+	_emojiStatus->painted = true;
 	_emojiStatus->emoji->paint(p, {
 		.textColor = _emojiStatus->lastColor,
 		.now = descriptor.now,
@@ -387,7 +439,7 @@ int PeerBadge::drawPremiumStar(Painter &p, const Descriptor &descriptor) {
 }
 
 QRect PeerBadge::emojiStatusRect() const {
-	if (!_emojiStatus || !_emojiStatus->emoji) {
+	if (!_emojiStatus || !_emojiStatus->emoji || !_emojiStatus->painted) {
 		return QRect();
 	}
 	return QRect(
@@ -399,7 +451,7 @@ void PeerBadge::paintEmojiStatusFrame(
 		QPainter &p,
 		crl::time now,
 		bool paused) {
-	if (!_emojiStatus || !_emojiStatus->emoji) {
+	if (!_emojiStatus || !_emojiStatus->emoji || !_emojiStatus->painted) {
 		return;
 	}
 	paintEmojiStatusFrame(p, now, paused, _emojiStatus->lastPosition);
@@ -410,7 +462,7 @@ void PeerBadge::paintEmojiStatusFrame(
 		crl::time now,
 		bool paused,
 		QPoint position) {
-	if (!_emojiStatus || !_emojiStatus->emoji) {
+	if (!_emojiStatus || !_emojiStatus->emoji || !_emojiStatus->painted) {
 		return;
 	}
 	_emojiStatus->emoji->paint(p, {
@@ -419,6 +471,30 @@ void PeerBadge::paintEmojiStatusFrame(
 		.position = position,
 		.paused = paused || On(PowerSaving::kEmojiStatus),
 	});
+}
+
+int PeerBadge::drawFAgramOfficial(Painter &p, const Descriptor &descriptor) {
+	const auto iconw = descriptor.fagramOfficial->width();
+	const auto rectForName = descriptor.rectForName;
+	const auto nameWidth = descriptor.nameWidth;
+	descriptor.fagramOfficial->paint(
+		p,
+		rectForName.x() + qMin(nameWidth, rectForName.width() - iconw),
+		rectForName.y(),
+		descriptor.outerWidth);
+	return iconw;
+}
+
+int PeerBadge::drawFAgramSupporter(Painter &p, const Descriptor &descriptor) {
+	const auto iconw = descriptor.fagramSupporter->width();
+	const auto rectForName = descriptor.rectForName;
+	const auto nameWidth = descriptor.nameWidth;
+	descriptor.fagramSupporter->paint(
+		p,
+		rectForName.x() + qMin(nameWidth, rectForName.width() - iconw),
+		rectForName.y(),
+		descriptor.outerWidth);
+	return iconw;
 }
 
 void PeerBadge::unload() {

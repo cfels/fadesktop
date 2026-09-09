@@ -48,9 +48,13 @@ namespace Window {
 	if constexpr (!Platform::IsMacStoreBuild()
 		&& !Platform::IsWindowsStoreBuild()) {
 		Ui::InstallTooltip(label, [] {
-			return u"Build date: %1.\nQt version: %2."_q
-				.arg(__DATE__)
-				.arg(QT_VERSION_STR);
+			if constexpr (Platform::IsLinux()) {
+				return u"Qt version: %1."_q.arg(QT_VERSION_STR);
+			} else {
+				return u"Build date: %1.\nQt version: %2."_q
+					.arg(__DATE__)
+					.arg(QT_VERSION_STR);
+			}
 		});
 	}
 	return label;
@@ -300,7 +304,7 @@ void SetupMenuBots(
 				continue;
 			} else if (const auto media = bot.media; !media->loaded()) {
 				if (!*iconLoadLifetime) {
-					auto &session = user->session();
+					const auto &session = user->session();
 					*iconLoadLifetime = session.downloaderTaskFinished(
 					) | rpl::on_next([=] {
 						if (media->loaded()) {

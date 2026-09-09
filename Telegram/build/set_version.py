@@ -26,7 +26,10 @@ versionMinor = ''
 versionPatch = ''
 versionAlpha = '0'
 versionBeta = False
-for arg in sys.argv:
+for arg in sys.argv[1:]:
+  if arg.lower() in ('-beta', '--beta', 'beta'):
+    versionBeta = True
+    continue
   match = re.match(r'^\s*(\d+)\.(\d+)(\.(\d+)(\.(\d+|beta))?)?\s*$', arg)
   if match:
     inputVersion = arg
@@ -40,6 +43,9 @@ for arg in sys.argv:
         versionBeta = True
       else:
         versionAlpha = match.group(6)
+
+if versionBeta and 'beta' not in versionOriginal:
+  versionOriginal = versionOriginal + '.beta'
 
 if not len(versionMajor):
   print("Wrong version parameter")
@@ -129,6 +135,13 @@ replaceInFile(scriptPath + '/../SourceFiles/core/version.h', [
   [ r'(AppVersion\s+=\s+)\d+', r'\g<1>' + versionFull ],
   [ r'(AppVersionStr\s+=\s+)[^;]+', r'\g<1>"' + versionStrSmall + '"' ],
   [ r'(AppBetaVersion\s+=\s+)[a-z]+', r'\g<1>' + ('true' if versionBeta else 'false') ],
+])
+
+print('Patching fa/fa_version.h...')
+replaceInFile(scriptPath + '/../SourceFiles/fa/fa_version.h', [
+  [ r'(AppFAVersion\s+=\s+)\d+', r'\g<1>' + versionFull ],
+  [ r'(AppFAVersionStr\s+=\s+)[^;]+', r'\g<1>"' + versionStrSmall + '"' ],
+  [ r'(AppFABetaVersion\s+=\s+)[a-z]+', r'\g<1>' + ('true' if versionBeta else 'false') ],
 ])
 
 parts = [versionMajor, versionMinor, versionPatch, versionAlpha]

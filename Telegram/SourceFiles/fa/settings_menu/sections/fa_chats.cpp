@@ -11,6 +11,8 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 #include "fa/settings/fa_settings.h"
 #include "fa/settings_menu/sections/fa_chats.h"
 #include "fa/settings_menu/fa_deeplink_context_menu.h"
+#include "fa/features/hide_archive_chats/hide_archive_chats.h"
+#include "fa/features/round_numbers/round_numbers.h"
 #include "fa/ui/md3/fa_cards.h"
 
 #include "fa_lang_auto.h"
@@ -101,6 +103,19 @@ namespace Settings {
 
 		FA::Ui::AddCardDivider(msgCard);
 
+		const auto fwdCountRow = FA::Ui::AddCardToggle(
+			msgCard,
+			fatr::fa_show_forwards_count(),
+			fatr::fa_show_forwards_count_desc(),
+			settings.showForwardsCountValue(),
+			[&settings](bool enabled) {
+				settings.setShowForwardsCount(enabled);
+			});
+		Settings::FADeepLinkMenu::AttachSettingsContextMenu(
+			fwdCountRow, u"fa/chats/show-forwards-count"_q, controller);
+
+		FA::Ui::AddCardDivider(msgCard);
+
 		const auto commaRow = FA::Ui::AddCardToggle(
 			msgCard,
 			fatr::fa_add_comma_after_mention(),
@@ -111,6 +126,19 @@ namespace Settings {
 			});
 		Settings::FADeepLinkMenu::AttachSettingsContextMenu(
 			commaRow, u"fa/chats/add-comma-after-mention"_q, controller);
+
+		FA::Ui::AddCardDivider(msgCard);
+
+		const auto linkPreviewRow = FA::Ui::AddCardToggle(
+			msgCard,
+			fatr::fa_disable_link_preview(),
+			fatr::fa_disable_link_preview_desc(),
+			settings.disableLinkPreviewValue(),
+			[&settings](bool enabled) {
+				settings.setDisableLinkPreview(enabled);
+			});
+		Settings::FADeepLinkMenu::AttachSettingsContextMenu(
+			linkPreviewRow, u"fa/chats/disable-link-preview"_q, controller);
 
 		FA::Ui::AddCardDivider(msgCard);
 
@@ -158,6 +186,11 @@ namespace Settings {
 			});
 		Settings::FADeepLinkMenu::AttachSettingsContextMenu(
 			hideAllFolderRow, u"fa/chats/hide-all-chats-folder"_q, controller);
+
+		const auto hideArchiveRow = FA::Features::HideArchiveChats::AddToggle(
+			chatListCard, controller);
+		Settings::FADeepLinkMenu::AttachSettingsContextMenu(
+			hideArchiveRow, u"fa/chats/hide-archive-chats"_q, controller);
 
 		FA::Ui::AddCardDivider(chatListCard);
 
@@ -211,6 +244,9 @@ namespace Settings {
 		Settings::FADeepLinkMenu::AttachSettingsContextMenu(
 			msgDetailsRow, u"fa/chats/message-details"_q, controller);
 
+		FA::Ui::AddCardDivider(chatListCard);
+		FA::Features::RoundNumbers::AddToggle(chatListCard, controller);
+
 		FA::Ui::AddModernSectionHeader(container, fatr::fa_media_and_appearance());
 		const auto mediaCard = FA::Ui::CreateCardContainer(container);
 
@@ -250,6 +286,19 @@ namespace Settings {
 			});
 		Settings::FADeepLinkMenu::AttachSettingsContextMenu(
 			statusDotRow, u"fa/chats/status-dot"_q, controller);
+
+		FA::Ui::AddCardDivider(mediaCard);
+
+		const auto statusDotOnlineRow = FA::Ui::AddCardToggle(
+			mediaCard,
+			fatr::fa_status_dot_online_only(),
+			nullptr,
+			rpl::single(settings.statusDotOnlineOnly()),
+			[&settings](bool enabled) {
+				settings.setStatusDotOnlineOnly(enabled);
+			});
+		Settings::FADeepLinkMenu::AttachSettingsContextMenu(
+			statusDotOnlineRow, u"fa/chats/status-dot-online"_q, controller);
 
 		FA::Ui::AddCardDivider(mediaCard);
 

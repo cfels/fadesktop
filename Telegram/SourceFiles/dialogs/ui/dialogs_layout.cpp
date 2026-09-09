@@ -8,6 +8,7 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 #include "dialogs/ui/dialogs_layout.h"
 
 #include "fa/settings/fa_settings.h"
+#include "styles/style_fa_styles.h"
 
 #include "base/options.h"
 #include "base/unixtime.h"
@@ -472,16 +473,14 @@ void PaintRow(
 		: context.selected
 		? st::dialogsBgOver
 		: context.currentBg;
-	auto swipeTranslation = 0;
+	auto swipeTranslation = 0.;
 	if (history
 		&& context.quickActionContext
 		&& !context.quickActionContext->ripple
 		&& (history->peer->id.value
 			== context.quickActionContext->data.msgBareId)) {
-		if (context.quickActionContext->data.translation != 0) {
-			swipeTranslation = context.quickActionContext->data.translation
-				* -2;
-		}
+		swipeTranslation
+			= context.quickActionContext->data.visualExactTranslation() * -2;
 	}
 	if (swipeTranslation) {
 		p.translate(-swipeTranslation, 0);
@@ -883,6 +882,14 @@ void PaintRow(
 				: context.selected
 				? &st::dialogsVerifiedIconOver
 				: &st::dialogsVerifiedIcon),
+			.fagramOfficial = &ThreeStateIcon(
+				st::dialogsFAgramOfficialIcon,
+				context.active,
+				context.selected),
+			.fagramSupporter = &ThreeStateIcon(
+				st::dialogsFAgramSupporterIcon,
+				context.active,
+				context.selected),
 			.premium = &ThreeStateIcon(
 				st::dialogsPremiumIcon,
 				context.active,
@@ -1024,12 +1031,12 @@ void PaintRow(
 	}
 	if (swipeTranslation) {
 		p.translate(swipeTranslation, 0);
-		const auto swipeActionRect = QRect(
+		const auto swipeActionRect = QRectF(
 			rect::right(geometry) - swipeTranslation,
 			geometry.y(),
 			swipeTranslation,
 			geometry.height());
-		p.setClipRegion(swipeActionRect);
+		p.setClipRect(swipeActionRect);
 		const auto labelType = ResolveQuickDialogLabel(
 			history,
 			context.quickActionContext->action,

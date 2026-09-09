@@ -12,6 +12,7 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 
 namespace Data {
 class ForumTopic;
+class SavedMessages;
 } // namespace Data
 
 namespace Info::Profile {
@@ -38,6 +39,7 @@ public:
 		Origin origin = { v::null });
 	explicit Memento(not_null<Data::ForumTopic*> topic);
 	explicit Memento(not_null<Data::SavedSublist*> sublist);
+	explicit Memento(not_null<Data::SavedMessages*> savedMessages);
 
 	object_ptr<ContentWidget> createWidget(
 		QWidget *parent,

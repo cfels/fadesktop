@@ -8,6 +8,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "settings/sections/settings_advanced.h"
 
 #include "settings/settings_common_session.h"
+#include "fa/settings/fa_settings.h"
 
 #include "api/api_global_privacy.h"
 #include "apiwrap.h"
@@ -65,6 +66,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/wrap/slide_wrap.h"
 #include "ui/wrap/vertical_layout.h"
 #include "window/window_controller.h"
+#include "window/window_saved_windows.h"
 #include "window/window_session_controller.h"
 #include "styles/style_layers.h"
 #include "styles/style_menu_icons.h"
@@ -745,6 +747,28 @@ void BuildSystemIntegrationSection(SectionBuilder &builder) {
 		}
 	}
 
+	const auto restoreWindows = builder.addCheckbox({
+		.id = u"advanced/restore_windows"_q,
+		.title = tr::lng_settings_restore_windows(),
+		.checked = Core::App().savedWindows()->restoreOnLaunch(),
+		.keywords = {
+			u"restore"_q,
+			u"windows"_q,
+			u"launch"_q,
+			u"startup"_q,
+			u"reopen"_q,
+			u"session"_q,
+		},
+	});
+	if (restoreWindows) {
+		restoreWindows->checkedChanges(
+		) | rpl::filter([=](bool checked) {
+			return (checked != Core::App().savedWindows()->restoreOnLaunch());
+		}) | rpl::on_next([=](bool checked) {
+			Core::App().savedWindows()->setRestoreOnLaunch(checked);
+		}, restoreWindows->lifetime());
+	}
+
 	if (Platform::IsWindows() && !Platform::IsWindowsStoreBuild()) {
 		const auto sendto = builder.addCheckbox({
 			.id = u"advanced/sendto"_q,
@@ -1152,6 +1176,7 @@ void BuildUpdateSection(SectionBuilder &builder, bool atTop) {
 			return (toggled != cAutoUpdate());
 		}) | rpl::on_next([=](bool toggled) {
 			cSetAutoUpdate(toggled);
+			FASettings::FASettings::getInstance().setDisableAutoUpdate(!toggled);
 			Local::writeSettings();
 			Core::UpdateChecker checker;
 			if (cAutoUpdate()) {
@@ -1504,6 +1529,7 @@ void SetupUpdate(not_null<Ui::VerticalLayout*> container) {
 		return (toggled != cAutoUpdate());
 	}) | rpl::on_next([=](bool toggled) {
 		cSetAutoUpdate(toggled);
+		FASettings::FASettings::getInstance().setDisableAutoUpdate(!toggled);
 
 		Local::writeSettings();
 		Core::UpdateChecker checker;

@@ -141,10 +141,10 @@ infoTopBarBack: IconButton(defaultIconButton) {
 
 	icon: infoTopBarBackIcon;
 	iconOver: infoTopBarBackIconOver;
-	iconPosition: point(11px, -1px);
+	iconPosition: point(-1px, -1px);
 
-	rippleAreaPosition: point(6px, 6px);
-	rippleAreaSize: 42px;
+	rippleAreaPosition: point(0px, 0px);
+	rippleAreaSize: 36px;
 	ripple: defaultRippleAnimationBgOver;
 }
 infoTopBarTitle: FlatLabel(defaultFlatLabel) {
@@ -161,19 +161,20 @@ infoTopBarMediaCancel: IconButton(infoTopBarBack) {
 }
 infoTopBarClose: IconButton(infoTopBarMediaCancel) {
 	width: 48px;
-	iconPosition: point(5px, -1px);
+	iconPosition: point(-1px, -1px);
 	rippleAreaPosition: point(0px, 6px);
 }
 infoTopBarSearch: IconButton(infoTopBarBack) {
 	width: 56px;
 	icon: icon {{ "top_bar_search", boxTitleCloseFg }};
 	iconOver: icon {{ "top_bar_search", boxTitleCloseFgOver }};
+	iconPosition: point(-1px, -1px);
 }
 infoTopBarMenu: IconButton(infoTopBarBack) {
 	width: 48px;
 	icon: icon {{ "title_menu_dots", boxTitleCloseFg }};
 	iconOver: icon {{ "title_menu_dots", boxTitleCloseFgOver }};
-	iconPosition: point(18px, -1px);
+	iconPosition: point(-1px, -1px);
 	rippleAreaPosition: point(1px, 6px);
 }
 infoTopBarMenuActive: icon {{ "title_menu_dots", windowActiveTextFg, point(0px, 0px) }};
@@ -181,7 +182,7 @@ infoTopBarCall: IconButton(infoTopBarMenu) {
 	width: 42px;
 	icon: icon {{ "top_bar_call", boxTitleCloseFg }};
 	iconOver: icon {{ "top_bar_call", boxTitleCloseFgOver }};
-	iconPosition: point(5px, -1px);
+	iconPosition: point(-1px, -1px);
 	rippleAreaPosition: point(0px, 6px);
 }
 infoTopBarQr: IconButton(infoTopBarMenu) {
@@ -236,6 +237,7 @@ infoTopBar: InfoTopBar {
 	titleWithSubtitlePosition: point(16px, 8px);
 	subtitle: FlatLabel(defaultFlatLabel) {
 		textFg: windowSubTextFg;
+		maxHeight: 20px;
 	}
 	subtitlePosition: point(16px, 28px);
 	bg: windowBg;
@@ -265,11 +267,11 @@ infoLayerTopBarBack: IconButton(infoTopBarBack) {
 	width: 60px;
 	height: infoLayerTopBarHeight;
 
-	iconPosition: point(10px, -1px);
+	iconPosition: point(-1px, -1px);
 	icon: infoLayerTopBarBackIcon;
 	iconOver: infoLayerTopBarBackIconOver;
-	rippleAreaSize: 40px;
-	rippleAreaPosition: point(6px, 8px);
+	rippleAreaSize: 36px;
+	rippleAreaPosition: point(0px, 0px);
 }
 infoLayerTopBarMediaCancel: IconButton(infoLayerTopBarBack) {
 	width: 48px;
@@ -277,31 +279,31 @@ infoLayerTopBarMediaCancel: IconButton(infoLayerTopBarBack) {
 	iconOver: icon {{ "info/info_close", boxTitleCloseFgOver }};
 }
 infoLayerTopBarClose: IconButton(infoLayerTopBarMediaCancel) {
-	iconPosition: point(4px, -1px);
+	iconPosition: point(-1px, -1px);
 	rippleAreaPosition: point(0px, 8px);
 }
 infoLayerTopBarMenu: IconButton(infoLayerTopBarClose) {
 	width: 40px;
 	icon: icon {{ "title_menu_dots", boxTitleCloseFg }};
 	iconOver: icon {{ "title_menu_dots", boxTitleCloseFgOver }};
-	iconPosition: point(16px, -1px);
+	iconPosition: point(-1px, -1px);
 }
 infoLayerTopBarCall: IconButton(infoLayerTopBarMenu) {
 	icon: icon {{ "top_bar_call", boxTitleCloseFg }};
 	iconOver: icon {{ "top_bar_call", boxTitleCloseFgOver }};
-	iconPosition: point(3px, -1px);
+	iconPosition: point(-1px, -1px);
 }
 infoLayerTopBarQr: IconButton(infoLayerTopBarClose) {
 	width: 40px;
 	icon: icon {{ "menu/qr_code", boxTitleCloseFg }};
 	iconOver: icon {{ "menu/qr_code", boxTitleCloseFgOver }};
-	iconPosition: point(8px, -1px);
+	iconPosition: point(-1px, -1px);
 }
 infoLayerTopBarSearch: IconButton(infoLayerTopBarClose) {
 	width: 48px;
 	icon: icon {{ "top_bar_search", boxTitleCloseFg }};
 	iconOver: icon {{ "top_bar_search", boxTitleCloseFgOver }};
-	iconPosition: point(7px, -1px);
+	iconPosition: point(-1px, -1px);
 }
 infoLayerTopBarEdit: IconButton(infoLayerTopBarClose) {
 	width: 44px;
@@ -371,6 +373,7 @@ infoProfileBirthdayDigitSize: 64px;
 
 
 infoProfileTopBarActionButtonBgOpacity: 0.16;
+infoProfileTopBarBackdropRippleOpacity: 0.125;
 infoProfileTopBarActionButtonSize: 52px;
 infoProfileTopBarActionButtonIconSize: 23px;
 infoProfileTopBarActionButtonLottieSize: infoProfileTopBarActionButtonIconSize - 0px;
@@ -561,8 +564,8 @@ infoIconDeleteRed: icon {{ "info/info_delete", attentionButtonFg }};
 infoIconReport: icon {{ "info/info_report", attentionButtonFg }};
 infoIconBlock: icon {{ "info/info_block", attentionButtonFg }};
 infoIconMembers: icon {{ "info/info_members", infoIconFg }};
-infoSharedMediaButtonIconPosition: point(20px, 3px);
-infoGroupMembersIconPosition: point(20px, 10px);
+infoSharedMediaButtonIconPosition: point(20px, 7px);
+infoGroupMembersIconPosition: point(20px, 12px);
 
 infoOpenApp: RoundButton(defaultActiveButton) {
 	textTop: 11px;
@@ -599,7 +602,7 @@ infoProfileButton: SettingsButton(defaultSettingsButton) {
 	textBg: transparent;
 	style: defaultTextStyle;
 
-	padding: margins(79px, 10px, 8px, 8px);
+	padding: margins(79px, 12px, 16px, 12px);
 	iconLeft: 22px;
 
 	toggle: infoProfileToggle;
@@ -610,7 +613,7 @@ infoMainButton: SettingsButton(infoProfileButton) {
 	textFg: lightButtonFg;
 	textFgOver: lightButtonFgOver;
 	style: semiboldTextStyle;
-	padding: margins(23px, 10px, 8px, 8px);
+	padding: margins(23px, 12px, 16px, 12px);
 }
 infoSharedMediaButton: SettingsButton(infoProfileButton) {
 	textBg: transparent;
@@ -749,6 +752,7 @@ managePeerButton: SettingsCountButton {
 	iconPosition: point(20px, 5px);
 	label: FlatLabel(defaultFlatLabel) {
 		textFg: windowActiveTextFg;
+		maxHeight: 20px;
 	}
 	labelPosition: point(25px, 12px);
 }
@@ -904,6 +908,9 @@ editPeerUsernameFieldMargins: margins(22px, 0px, 22px, 0px);
 
 historyTopBarBack: IconButton(infoTopBarBack) {
 	width: 52px;
+	iconPosition: point(11px, -1px);
+	rippleAreaPosition: point(6px, 6px);
+	rippleAreaSize: 42px;
 }
 topBarHeight: 54px;
 topBarMenuPosition: point(-6px, 45px);
@@ -1003,6 +1010,10 @@ inviteLinkThreeDots: IconButton(defaultIconButton) {
 inviteLinkFieldPadding: margins(22px, 7px, 22px, 14px);
 inviteLinkFieldLabel: FlatLabel(defaultFlatLabel) {
 	align: align(center);
+	maxHeight: 20px;
+}
+inviteLinkFieldLabelLeft: FlatLabel(inviteLinkFieldLabel) {
+	align: align(left);
 }
 
 inviteLinkButton: RoundButton(defaultActiveButton) {
@@ -1288,6 +1299,7 @@ collectionEmptyTitle: FlatLabel(boxTitle) {
 }
 collectionEmptyText: FlatLabel(defaultFlatLabel) {
 	textFg: windowSubTextFg;
+	minWidth: 256px;
 }
 collectionEmptyButton: RoundButton(defaultActiveButton) {
 	width: -96px;

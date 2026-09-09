@@ -187,6 +187,15 @@ const auto kFAGeneralMeta = BuildHelper({
 
 	builder.add(nullptr, [] {
 		return SearchEntry{
+			.id = u"fa/general/disable-auto-update"_q,
+			.title = fatr::fa_disable_auto_update(fatr::now),
+			.keywords = { u"update"_q, u"updates"_q, u"ota"_q, u"auto"_q, u"disable"_q },
+			.icon = { &st::menuIconShowAll },
+		};
+	});
+
+	builder.add(nullptr, [] {
+		return SearchEntry{
 			.id = u"fa/general/start-token"_q,
 			.title = fatr::fa_show_start_token(fatr::now),
 			.keywords = { u"start"_q, u"token"_q, u"bot"_q, u"parameter"_q },
@@ -312,6 +321,15 @@ const auto kFAChatsMeta = BuildHelper({
 
 	builder.add(nullptr, [] {
 		return SearchEntry{
+			.id = u"fa/chats/round-numbers"_q,
+			.title = fatr::fa_round_group_channel_numbers(fatr::now),
+			.keywords = { u"round"_q, u"numbers"_q, u"members"_q, u"subscribers"_q, u"count"_q, u"k"_q, u"shorten"_q },
+			.icon = { &st::menuIconChatBubble },
+		};
+	});
+
+	builder.add(nullptr, [] {
+		return SearchEntry{
 			.id = u"fa/chats/add-comma-after-mention"_q,
 			.title = fatr::fa_add_comma_after_mention(fatr::now),
 			.keywords = { u"mention"_q, u"comma"_q, u"username"_q, u"typing"_q },
@@ -342,6 +360,15 @@ const auto kFAChatsMeta = BuildHelper({
 			.id = u"fa/chats/show-forwarded-date-in-title"_q,
 			.title = fatr::fa_show_forwarded_date_in_title(fatr::now),
 			.keywords = { u"forward"_q, u"forwarded"_q, u"date"_q, u"title"_q, u"header"_q, u"time"_q },
+			.icon = { &st::menuIconChatBubble },
+		};
+	});
+
+	builder.add(nullptr, [] {
+		return SearchEntry{
+			.id = u"fa/chats/show-forwards-count"_q,
+			.title = fatr::fa_show_forwards_count(fatr::now),
+			.keywords = { u"forward"_q, u"forwards"_q, u"count"_q, u"shares"_q, u"views"_q, u"channel"_q, u"post"_q },
 			.icon = { &st::menuIconChatBubble },
 		};
 	});
@@ -405,6 +432,15 @@ const auto kFAAppearanceMeta = BuildHelper({
 			.id = u"fa/appearance/roundness"_q,
 			.title = fatr::fa_rounding(fatr::now),
 			.keywords = { u"roundness"_q, u"rounding"_q, u"corners"_q, u"radius"_q, u"avatar"_q, u"userpic"_q },
+			.icon = { &st::menuIconPalette },
+		};
+	});
+
+	builder.add(nullptr, [] {
+		return SearchEntry{
+			.id = u"fa/appearance/avatar-shape-outline"_q,
+			.title = fatr::fa_avatar_shape_outline(fatr::now),
+			.keywords = { u"avatar"_q, u"shape"_q, u"outline"_q, u"stroke"_q, u"material"_q },
 			.icon = { &st::menuIconPalette },
 		};
 	});
@@ -512,33 +548,6 @@ const auto kFAContextMenuMeta = BuildHelper({
 			.id = u"fa/context-menu/icon-size"_q,
 			.title = fatr::fa_shortcut_icon_size(fatr::now),
 			.keywords = { u"shortcut"_q, u"icon"_q, u"size"_q, u"customize"_q },
-			.icon = { &st::menuIconSigned },
-		};
-	});
-
-	builder.add(nullptr, [] {
-		return SearchEntry{
-			.id = u"fa/context-menu/spacing"_q,
-			.title = fatr::fa_shortcut_spacing(fatr::now),
-			.keywords = { u"shortcut"_q, u"spacing"_q, u"gap"_q, u"customize"_q },
-			.icon = { &st::menuIconSigned },
-		};
-	});
-
-	builder.add(nullptr, [] {
-		return SearchEntry{
-			.id = u"fa/context-menu/h-padding"_q,
-			.title = fatr::fa_shortcut_horizontal_padding(fatr::now),
-			.keywords = { u"shortcut"_q, u"padding"_q, u"horizontal"_q, u"customize"_q },
-			.icon = { &st::menuIconSigned },
-		};
-	});
-
-	builder.add(nullptr, [] {
-		return SearchEntry{
-			.id = u"fa/context-menu/v-padding"_q,
-			.title = fatr::fa_shortcut_vertical_padding(fatr::now),
-			.keywords = { u"shortcut"_q, u"padding"_q, u"vertical"_q, u"customize"_q },
 			.icon = { &st::menuIconSigned },
 		};
 	});

@@ -12,6 +12,7 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 #include "base/timer.h"
 #include "base/weak_ptr.h"
 #include "info/profile/info_profile_members_controllers.h"
+#include "fa/filters/fa_members_filter.h"
 
 class PeerListStories;
 struct ChatAdminRightsInfo;
@@ -200,7 +201,8 @@ public:
 	ParticipantsBoxController(
 		not_null<Window::SessionNavigation*> navigation,
 		not_null<PeerData*> peer,
-		Role role);
+		Role role,
+		bool showMembersFilter = false);
 	~ParticipantsBoxController();
 
 	Main::Session &session() const override;
@@ -236,6 +238,9 @@ public:
 
 	void setStoriesShown(bool shown);
 
+	void setMembersFilter(Fa::MembersFilter::Type filter);
+	[[nodiscard]] Fa::MembersFilter::Type membersFilter() const;
+
 protected:
 	using Row = Info::Profile::MemberListRow;
 	using Type = Row::Type;
@@ -247,7 +252,8 @@ protected:
 		CreateTag,
 		Window::SessionNavigation *navigation,
 		not_null<PeerData*> peer,
-		Role role);
+		Role role,
+		bool showMembersFilter = false);
 
 	virtual std::unique_ptr<PeerListRow> createRow(
 		not_null<PeerData*> participant) const;
@@ -321,6 +327,7 @@ private:
 	void fullListRefresh();
 	void refreshRows();
 	void resort();
+	void preloadAdmins();
 	void sortByRoleAndName();
 	void applyRoleSectionHeaders();
 	[[nodiscard]] int memberRoleTier(not_null<PeerData*> peer) const;
@@ -333,7 +340,9 @@ private:
 	Role _role = Role::Admins;
 	int _offset = 0;
 	mtpRequestId _loadRequestId = 0;
+	mtpRequestId _adminsRequestId = 0;
 	bool _allLoaded = false;
+	bool _adminsPreloaded = false;
 	ParticipantsAdditionalData _additional;
 	std::unique_ptr<ParticipantsOnlineSorter> _onlineSorter;
 	rpl::variable<bool> _groupByRole = false;
@@ -344,6 +353,8 @@ private:
 	base::weak_qptr<Ui::BoxContent> _editParticipantBox;
 
 	std::unique_ptr<PeerListStories> _stories;
+	Fa::MembersFilter::Type _membersFilter = Fa::MembersFilter::Type::All;
+	bool _showMembersFilter = false;
 
 };
 

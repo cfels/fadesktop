@@ -7,7 +7,6 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 */
 
 #include "fa/ui/md3/previews.h"
-#include "fa/ui/md3/fa_avatar_shape.h"
 #include "fa/ui/md3/fa_cards.h"
 #include "fa/ui/md3/svg_assets.h"
 #include "fa/settings/fa_settings.h"
@@ -24,7 +23,7 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 #include <QSvgRenderer>
 
 IconPackCheck::IconPackCheck(bool isMaterial, bool checked)
-: Ui::AbstractCheckView(st::defaultRadio.duration, checked, nullptr)
+: ::Ui::AbstractCheckView(st::defaultRadio.duration, checked, nullptr)
 , _isMaterial(isMaterial) {
 }
 
@@ -106,7 +105,7 @@ QImage IconPackCheck::prepareRippleMask() const { return QImage(); }
 bool IconPackCheck::checkRippleStartPosition(QPoint position) const { return false; }
 
 AvatarShapeCheck::AvatarShapeCheck(int shapeIndex, bool checked)
-: Ui::AbstractCheckView(st::defaultRadio.duration, checked, nullptr)
+: ::Ui::AbstractCheckView(st::defaultRadio.duration, checked, nullptr)
 , _shapeIndex(shapeIndex) {
 }
 

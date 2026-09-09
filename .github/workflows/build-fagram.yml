@@ -15,6 +15,11 @@ on:
         options:
           - ci
           - rel
+      dirty_build:
+        description: "Enable dirty build (cache out dir)"
+        type: boolean
+        required: false
+        default: false
       disable_cache:
         description: "Skip restore cache (rebuild from source)"
         type: boolean
@@ -38,6 +43,7 @@ jobs:
       build_type: ${{ inputs.build_type }}
       skip_upload: true
       disable_cache: ${{ inputs.disable_cache }}
+      dirty_build: ${{ inputs.dirty_build }}
     secrets: inherit
 
   build-windows:
@@ -48,6 +54,7 @@ jobs:
       build_type: ${{ inputs.build_type }}
       skip_upload: true
       disable_cache: ${{ inputs.disable_cache }}
+      dirty_build: ${{ inputs.dirty_build }}
     secrets: inherit
 
   build-mac:
@@ -58,6 +65,7 @@ jobs:
       build_type: ${{ inputs.build_type }}
       skip_upload: true
       disable_cache: ${{ inputs.disable_cache }}
+      dirty_build: ${{ inputs.dirty_build }}
     secrets: inherit
 
   upload-telegram:
@@ -88,10 +96,10 @@ jobs:
   create-release:
     name: Create Release
     needs: [build-linux, build-windows, build-mac]
-    if: inputs.build_type == 'rel'
     uses: ./.github/workflows/release.yml
     with:
       tagname: ${{ inputs.tagname }}
+      build_type: ${{ inputs.build_type }}
       linux_run_id: ${{ github.run_id }}
       windows_run_id: ${{ github.run_id }}
       mac_run_id: ${{ github.run_id }}
@@ -100,10 +108,10 @@ jobs:
   publish-ota:
     name: Publish OTA Update
     needs: [build-linux, build-windows, build-mac]
-    if: inputs.build_type == 'rel'
     uses: ./.github/workflows/publish-ota.yml
     with:
       linux_run_id: ${{ github.run_id }}
       windows_run_id: ${{ github.run_id }}
       mac_run_id: ${{ github.run_id }}
+      channel: ${{ inputs.build_type == 'ci' && 'beta' || '' }}
     secrets: inherit

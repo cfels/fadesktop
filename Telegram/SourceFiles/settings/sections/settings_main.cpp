@@ -10,6 +10,7 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 #include "fa/ui/md3/fa_slider.h"
 
 #include "fa_lang_auto.h"
+#include "fa/features/badges/badge_helpers.h"
 
 #include "settings/sections/settings_main.h"
 #include "settings/settings_common_session.h"
@@ -132,6 +133,7 @@ private:
 	const not_null<UserData*> _user;
 	Info::Profile::EmojiStatusPanel _emojiStatusPanel;
 	Info::Profile::Badge _badge;
+	Info::Profile::Badge _faBadge;
 
 	object_ptr<Ui::UserpicButton> _userpic;
 	object_ptr<Ui::FlatLabel> _name = { nullptr };
@@ -171,6 +173,18 @@ Cover::Cover(
 	},
 	0, // customStatusLoopsLimit
 	Info::Profile::BadgeType::Premium)
+, _faBadge(
+	this,
+	st::infoPeerBadge,
+	&user->session(),
+	::FA::Badges::BadgeContentForPeer(user),
+	&_emojiStatusPanel,
+	[=] {
+		return controller->isGifPausedAtLeastFor(
+			Window::GifPauseReason::Layer);
+	},
+	0, // customStatusLoopsLimit
+	::FA::Badges::BadgeTypes())
 , _userpic(
 	this,
 	controller,
@@ -210,6 +224,7 @@ Cover::Cover(
 	initViewers();
 	setupChildGeometry();
 
+	_userpic->setVideoAllowed(true);
 	_userpic->switchChangePhotoOverlay(_user->isSelf(), [=](
 			Ui::UserpicButton::ChosenImage chosen) {
 		auto &image = chosen.image;
@@ -218,9 +233,10 @@ Cover::Cover(
 		_user->session().api().peerPhoto().upload(
 			_user,
 			{
-				std::move(image),
-				chosen.markup.documentId,
-				chosen.markup.colors,
+				.image = std::move(image),
+				.markupDocumentId = chosen.markup.documentId,
+				.markupColors = chosen.markup.colors,
+				.video = std::move(chosen.video),
 			});
 		if (!isMarkup) {
 			_userpic->showUploadProgress();
@@ -233,7 +249,12 @@ Cover::Cover(
 			_badge.widget(),
 			_badge.sizeTag());
 	});
-	_badge.updated() | rpl::on_next([=] {
+	_faBadge.setPremiumClickCallback(
+		::FA::Badges::badgeClickHandler(_user));
+	rpl::merge(
+		_badge.updated(),
+		_faBadge.updated()
+	) | rpl::on_next([=] {
 		refreshNameGeometry(width());
 	}, _name->lifetime());
 
@@ -364,12 +385,20 @@ void Cover::refreshNameGeometry(int newWidth) {
 	if (const auto width = _badge.widget() ? _badge.widget()->width() : 0) {
 		nameWidth -= st::infoVerifiedCheckPosition.x() + width;
 	}
+	if (const auto width = _faBadge.widget() ? _faBadge.widget()->width() : 0) {
+		nameWidth -= st::infoVerifiedCheckPosition.x() + width;
+	}
 	_name->resizeToNaturalWidth(nameWidth);
 	_name->moveToLeft(textLeft, nameTop, newWidth);
 	const auto badgeLeft = textLeft + _name->width();
 	const auto badgeTop = nameTop;
 	const auto badgeBottom = nameTop + _name->height();
 	_badge.move(badgeLeft, badgeTop, badgeBottom);
+	const auto faBadgeLeft = badgeLeft
+		+ (_badge.widget()
+			? (_badge.widget()->width() + st::infoVerifiedCheckPosition.x())
+			: 0);
+	_faBadge.move(faBadgeLeft, badgeTop, badgeBottom);
 }
 
 void Cover::updatePhoneText() {
@@ -1307,6 +1336,65 @@ void SetupValidatePasswordSuggestion(
 	Ui::AddSkip(content);
 }
 
+namespace {
+
+class ScaleCardWidget final : public Ui::RpWidget {
+public:
+	ScaleCardWidget(
+		QWidget *parent,
+		rpl::producer<QString> title,
+		rpl::producer<bool> value,
+		Fn<void(bool)> onToggle)
+	: RpWidget(parent)
+	, _toggle(FAUi::CreateCardToggle(
+		this,
+		std::move(title),
+		nullptr,
+		std::move(value),
+		std::move(onToggle)))
+	, _sliderWrap(Ui::CreateChild<Ui::RpWidget>(this))
+	, _slider(Ui::CreateChild<FAUi::MaterialSlider>(_sliderWrap))
+	, _label(Ui::CreateChild<Ui::FlatLabel>(_sliderWrap, st::settingsScaleLabel)) {
+		rpl::combine(
+			_sliderWrap->sizeValue(),
+			_label->sizeValue()
+		) | rpl::on_next([=](QSize outer, QSize size) {
+			const auto minRight = std::max(size.width(), st::settingsScaleLabel.style.font->width(u"300%"_q)) + st::normalFont->spacew * 2;
+			_label->moveToRight(0, (outer.height() - size.height()) / 2);
+			const auto width = std::max(40, outer.width() - minRight);
+			_slider->resize(width, 32);
+			_slider->moveToLeft(0, (outer.height() - _slider->height()) / 2);
+		}, _label->lifetime());
+	}
+
+	[[nodiscard]] not_null<FAUi::MaterialSlider*> slider() const {
+		return _slider;
+	}
+	[[nodiscard]] not_null<Ui::FlatLabel*> label() const {
+		return _label;
+	}
+
+protected:
+	int resizeGetHeight(int newWidth) override {
+		const auto toggleH = _toggle->resizeGetHeight(newWidth);
+		_toggle->setGeometry(0, 0, newWidth, toggleH);
+		const auto sliderH = 32;
+		const auto left = 16;
+		const auto right = 16;
+		const auto bottomPadding = 8;
+		_sliderWrap->setGeometry(left, toggleH, std::max(0, newWidth - left - right), sliderH);
+		return toggleH + sliderH + bottomPadding;
+	}
+
+private:
+	not_null<Ui::RpWidget*> _toggle;
+	not_null<Ui::RpWidget*> _sliderWrap;
+	not_null<FAUi::MaterialSlider*> _slider;
+	not_null<Ui::FlatLabel*> _label;
+};
+
+} // namespace
+
 bool HasInterfaceScale() {
 	return true;
 }
@@ -1356,35 +1444,19 @@ void SetupInterfaceScale(
 	const auto inSetScale = card->lifetime().make_state<bool>();
 	const auto setScaleHolder = card->lifetime().make_state<Fn<void(int)>>();
 
-	FAUi::AddCardToggle(
+	const auto scaleWidget = card->add(object_ptr<ScaleCardWidget>(
 		card,
 		tr::lng_settings_default_scale(),
-		nullptr,
 		rpl::single(isAuto) | rpl::then(autoScaleStream->events()),
 		[=](bool checked) {
 			const auto scale = checked ? style::kScaleAuto : cEvalScale(cConfigScale());
 			if (*setScaleHolder) {
 				(*setScaleHolder)(scale);
 			}
-		});
+		}));
 
-	const auto sliderWrap = card->add(
-		object_ptr<Ui::RpWidget>(card),
-		style::margins(16, 4, 16, 14));
-	const auto slider = Ui::CreateChild<FAUi::MaterialSlider>(sliderWrap);
-	const auto label = Ui::CreateChild<Ui::FlatLabel>(sliderWrap, st::settingsScaleLabel);
-
-	sliderWrap->resize(sliderWrap->width(), 32);
-	rpl::combine(
-		sliderWrap->sizeValue(),
-		label->sizeValue()
-	) | rpl::on_next([=](QSize outer, QSize size) {
-		const auto minRight = std::max(size.width(), st::settingsScaleLabel.style.font->width(u"300%"_q)) + st::normalFont->spacew * 2;
-		label->moveToRight(0, (outer.height() - size.height()) / 2);
-		const auto width = std::max(40, outer.width() - minRight);
-		slider->resize(width, 32);
-		slider->moveToLeft(0, (outer.height() - slider->height()) / 2);
-	}, label->lifetime());
+	const auto slider = scaleWidget->slider();
+	const auto label = scaleWidget->label();
 
 	slider->setAccessibleName(tr::lng_settings_scale(tr::now));
 

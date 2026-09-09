@@ -19,6 +19,7 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 #include "core/ui_integration.h"
 #include "lang/lang_keys.h"
 #include "history/history_item_components.h"
+#include "history/history_item_helpers.h"
 #include "history/history_item.h"
 #include "history/history.h"
 #include "history/view/media/history_view_media.h"
@@ -155,6 +156,7 @@ bool BottomInfo::isWide() const {
 		|| _data.scheduleRepeatPeriod
 		|| !_data.author.isEmpty()
 		|| !_views.isEmpty()
+		|| !_forwards.isEmpty()
 		|| !_replies.isEmpty()
 		|| _effect
 		|| _data.tonStake;
@@ -174,31 +176,40 @@ TextState BottomInfo::textState(
 	if (_data.flags & (Data::Flag::OutLayout | Data::Flag::Sending)) {
 		withTicksWidth += st::historySendStateSpace;
 	}
-	if (!_views.isEmpty()) {
-		const auto viewsWidth = _views.maxWidth();
-		const auto right = width()
+	if (!_views.isEmpty() || !_forwards.isEmpty()) {
+		auto right = width()
 			- withTicksWidth
-			- ((_data.flags & Data::Flag::Pinned) ? st::historyPinWidth : 0)
-			- st::historyViewsSpace
-			- st::historyViewsWidth
-			- viewsWidth;
-		const auto inViews = QRect(
+			- ((_data.flags & Data::Flag::Pinned) ? st::historyPinWidth : 0);
+		if (!_views.isEmpty()) {
+			right -= st::historyViewsSpace
+				+ st::historyViewsWidth
+				+ _views.maxWidth();
+		}
+		if (!_forwards.isEmpty()) {
+			right -= st::historyViewsSpace
+				+ st::historyViewsWidth
+				+ _forwards.maxWidth();
+		}
+		const auto inViewsOrForwards = QRect(
 			right,
 			0,
-			withTicksWidth + st::historyViewsWidth,
+			width() - withTicksWidth - right,
 			st::msgDateFont->height
 		).contains(position);
-		if (inViews) {
+		if (inViewsOrForwards) {
 			result.customTooltip = true;
-			const auto fullViews = tr::lng_views_tooltip(
-				tr::now,
-				lt_count_decimal,
-				*_data.views);
-			const auto fullForwards = _data.forwardsCount
-				? ('\n' + tr::lng_forwards_tooltip(
+			const auto fullViews = _data.views
+				? tr::lng_views_tooltip(
 					tr::now,
 					lt_count_decimal,
-					*_data.forwardsCount))
+					*_data.views)
+				: QString();
+			const auto fullForwards = _data.forwardsCount
+				? ((fullViews.isEmpty() ? QString() : QString("\n"))
+					+ tr::lng_forwards_tooltip(
+						tr::now,
+						lt_count_decimal,
+						*_data.forwardsCount))
 				: QString();
 			result.customTooltipText = fullViews + fullForwards;
 		}
@@ -351,6 +362,21 @@ void BottomInfo::paint(
 			firstLineBottom + st::historyViewsTop,
 			outerWidth);
 	}
+	if (!_forwards.isEmpty()) {
+		const auto forwardsWidth = _forwards.maxWidth();
+		right -= st::historyViewsSpace + forwardsWidth;
+		_forwards.drawLeft(p, right, position.y(), forwardsWidth, outerWidth);
+
+		const auto &icon = inverted
+			? st->historyForwardsInvertedIcon()
+			: stm->historyForwardsIcon;
+		right -= st::historyViewsWidth;
+		icon.paint(
+			p,
+			right,
+			firstLineBottom + st::historyViewsTop,
+			outerWidth);
+	}
 	if (!_replies.isEmpty()) {
 		const auto repliesWidth = _replies.maxWidth();
 		right -= st::historyViewsSpace + repliesWidth;
@@ -437,7 +463,7 @@ void BottomInfo::paintEffect(
 		x += width + add;
 		widthLeft -= width + add;
 	}
-	if (!animations.empty()) {
+	if (!animations.empty() && context.reactionInfo) {
 		const auto now = context.now;
 		context.reactionInfo->effectPaint = [
 			now,
@@ -477,16 +503,21 @@ QSize BottomInfo::countCurrentSize(int newWidth) {
 void BottomInfo::layout() {
 	layoutDateText();
 	layoutViewsText();
+	layoutForwardsText();
 	layoutRepliesText();
 	layoutEffectText();
 	initDimensions();
 }
 
 void BottomInfo::layoutDateText() {
-	const auto editedPrimary = (_data.flags & Data::Flag::EditedPrimary)
+	const auto updated = (_data.flags & Data::Flag::Updated);
+	const auto editedPrimary = !updated
+		&& (_data.flags & Data::Flag::EditedPrimary)
 		&& !(_data.flags & Data::Flag::ForwardedDate);
 	const auto edited = editedPrimary
 		? QString()
+		: updated
+		? (tr::lng_ephemeral_updated(tr::now) + ' ')
 		: (_data.flags & Data::Flag::Edited)
 		? (tr::lng_edited(tr::now) + ' ')
 		: (_data.flags & Data::Flag::EstimateDate)
@@ -559,6 +590,21 @@ void BottomInfo::layoutViewsText() {
 		Ui::NameTextOptions());
 }
 
+void BottomInfo::layoutForwardsText() {
+	if (!_data.forwardsCount
+		|| !*_data.forwardsCount
+		|| !FASettings::FASettings::getInstance().showForwardsCount()
+		|| (_data.flags & Data::Flag::Sending)
+		|| (_data.flags & Data::Flag::Shortcut)) {
+		_forwards.clear();
+		return;
+	}
+	_forwards.setText(
+		st::msgDateTextStyle,
+		Lang::FormatCountToShort(*_data.forwardsCount).string,
+		Ui::NameTextOptions());
+}
+
 void BottomInfo::layoutRepliesText() {
 	if (!_data.replies
 		|| !*_data.replies
@@ -594,6 +640,11 @@ QSize BottomInfo::countOptimalSize() {
 	if (!_views.isEmpty()) {
 		width += st::historyViewsSpace
 			+ _views.maxWidth()
+			+ st::historyViewsWidth;
+	}
+	if (!_forwards.isEmpty()) {
+		width += st::historyViewsSpace
+			+ _forwards.maxWidth()
 			+ st::historyViewsWidth;
 	}
 	if (!_replies.isEmpty()) {
@@ -692,6 +743,9 @@ BottomInfo::Data BottomInfoDataFromMessage(not_null<Message*> message) {
 			result.flags |= Flag::EditedPrimary;
 			result.editedDate = base::unixtime::parse(editedDate);
 		}
+	}
+	if (IsAnchoredEphemeral(item)) {
+		result.flags |= Flag::Updated;
 	}
 	if (const auto views = item->Get<HistoryMessageViews>()) {
 		if (views->views.count >= 0) {

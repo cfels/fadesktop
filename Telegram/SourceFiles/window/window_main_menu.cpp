@@ -7,13 +7,16 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 */
 #include "window/window_main_menu.h"
 
+#include "fa/features/hide_archive_chats/hide_archive_chats.h"
 #include "fa/settings/fa_settings.h"
 #include "fa/ui/md3/fa_nav_drawer.h"
+#include "fa/features/badges/badge_helpers.h"
 
 #include "apiwrap.h"
 #include "base/event_filter.h"
 #include "base/qt_signal_producer.h"
 #include "boxes/about_box.h"
+#include "core/update_channel.h"
 #include "boxes/peer_list_controllers.h"
 #include "boxes/premium_preview_box.h"
 #include "calls/group/calls_group_common.h"
@@ -71,6 +74,7 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 #include "window/window_peer_menu.h"
 #include "window/window_session_controller.h"
 #include "styles/style_chat.h" // popupMenuExpandedSeparator
+#include "styles/style_info.h"
 #include "styles/style_menu_icons.h"
 #include "styles/style_settings.h"
 #include "styles/style_window.h"
@@ -326,6 +330,15 @@ MainMenu::MainMenu(
 	[=] { return controller->isGifPausedAtLeastFor(GifPauseReason::Layer); },
 	kPlayStatusLimit,
 	Info::Profile::BadgeType::Premium))
+, _faBadge(std::make_unique<Info::Profile::Badge>(
+	this,
+	st::infoPeerBadge,
+	&controller->session(),
+	::FA::Badges::BadgeContentForPeer(controller->session().user()),
+	nullptr,
+	[=] { return controller->isGifPausedAtLeastFor(GifPauseReason::Layer); },
+	0,
+	::FA::Badges::BadgeTypes()))
 , _scroll(this, st::defaultSolidScroll)
 , _inner(_scroll->setOwnedWidget(
 	object_ptr<Ui::VerticalLayout>(_scroll.data())))
@@ -393,6 +406,11 @@ MainMenu::MainMenu(
 		const auto cardMarginBottom = 12;
 		const auto cardPaddingX = 16;
 		const auto cardPaddingY = 10;
+		const auto availableWidth = std::max(
+			size.width() - 2 * cardMarginX - 2 * cardPaddingX,
+			0);
+		_telegram->resizeToWidth(availableWidth);
+		_version->resizeToWidth(availableWidth);
 		const auto cardHeight = _telegram->height() + 3 + _version->height() + 2 * cardPaddingY;
 		const auto cardY = size.height() - cardMarginBottom - cardHeight;
 
@@ -414,22 +432,21 @@ MainMenu::MainMenu(
 		updateInnerControlsGeometry();
 	}, _inner->lifetime());
 
-	parentResized();
-
 	_telegram->setMarkedText(tr::link(
 		u"FAgram Desktop"_q,
 		u"https://t.me/FAgramDesktop"_q));
 	_telegram->setLinksTrusted();
+	// The canary version is too long for the "Version {version}" form.
 	_version->setMarkedText(
 		tr::link(
-			tr::lng_settings_current_version(
-				tr::now,
-				lt_version,
-				currentVersionText()),
+			Core::BuildIsCanary
+				? currentVersionShortText()
+				: tr::lng_settings_current_version(
+					tr::now,
+					lt_version,
+					currentVersionShortText()),
 			1) // Link 1.
-		.append(QChar(' '))
-		.append(QChar(8211))
-		.append(QChar(' '))
+		.append(u"\n"_q)
 		.append(tr::link(tr::lng_menu_about(tr::now), 2))); // Link 2.
 	_version->setLink(
 		1,
@@ -440,15 +457,21 @@ MainMenu::MainMenu(
 			controller->show(Box(AboutBox));
 		}));
 
+	parentResized();
+
 	rpl::combine(
 		_toggleAccounts->rightSkipValue(),
-		rpl::single(rpl::empty) | rpl::then(_badge->updated())
+		rpl::single(rpl::empty) | rpl::then(_badge->updated()),
+		rpl::single(rpl::empty) | rpl::then(_faBadge->updated())
 	) | rpl::on_next([=] {
 		moveBadge();
 	}, lifetime());
 	_badge->setPremiumClickCallback([=] {
 		chooseEmojiStatus();
 	});
+	const auto user = controller->session().user();
+	_faBadge->setPremiumClickCallback(
+		::FA::Badges::badgeClickHandler(user));
 
 	_controller->session().downloaderTaskFinished(
 	) | rpl::on_next([=] {
@@ -499,19 +522,41 @@ MainMenu::MainMenu(
 MainMenu::~MainMenu() = default;
 
 void MainMenu::moveBadge() {
-	if (!_badge->widget()) {
+	const auto badgeWidth = _badge->widget()
+		? _badge->widget()->width()
+		: 0;
+	const auto faBadgeWidth = _faBadge->widget()
+		? _faBadge->widget()->width()
+		: 0;
+	if (!badgeWidth && !faBadgeWidth) {
 		return;
 	}
+	const auto nameGap = badgeWidth ? st::semiboldFont->spacew : 0;
+	const auto faGap = faBadgeWidth
+		? st::infoVerifiedCheckPosition.x()
+		: 0;
+	const auto reserved = nameGap
+		+ badgeWidth
+		+ faGap
+		+ faBadgeWidth;
 	const auto available = width()
 		- st::mainMenuCoverNameLeft
 		- _toggleAccounts->rightSkip()
-		- _badge->widget()->width();
-	const auto left = st::mainMenuCoverNameLeft
-		+ std::min(_name.maxWidth() + st::semiboldFont->spacew, available);
-	_badge->move(
-		left,
-		st::mainMenuCoverNameTop,
-		st::mainMenuCoverNameTop + st::semiboldFont->height);
+		- reserved;
+	const auto nameEnd = st::mainMenuCoverNameLeft
+		+ std::min(_name.maxWidth(), available);
+	if (_badge->widget()) {
+		_badge->move(
+			nameEnd + nameGap,
+			st::mainMenuCoverNameTop,
+			st::mainMenuCoverNameTop + st::semiboldFont->height);
+	}
+	if (_faBadge->widget()) {
+		_faBadge->move(
+			nameEnd + nameGap + badgeWidth,
+			st::mainMenuCoverNameTop,
+			st::mainMenuCoverNameTop + st::semiboldFont->height);
+	}
 }
 
 void MainMenu::setupArchive() {
@@ -537,7 +582,8 @@ void MainMenu::setupArchive() {
 		const auto f = folder();
 		return f
 			&& (!f->chatsList()->empty() || f->storiesCount() > 0)
-			&& controller->session().settings().archiveInMainMenu();
+			&& (controller->session().settings().archiveInMainMenu()
+				|| FA::Features::HideArchiveChats::ShouldHide());
 	};
 
 	const auto wrap = _menu->add(
@@ -603,7 +649,9 @@ void MainMenu::setupArchive() {
 		}) | rpl::to_empty,
 		controller->session().data().stories().sourcesChanged(
 			Data::StorySourcesList::Hidden
-		)
+		),
+		FASettings::FASettings::getInstance().hideArchiveChatsChanges(
+		) | rpl::to_empty
 	) | rpl::on_next([=] {
 		const auto isArchiveVisible = checkArchive();
 		wrap->toggle(isArchiveVisible, anim::type::normal);
@@ -848,11 +896,19 @@ void MainMenu::updateInnerControlsGeometry() {
 		+ st::mainMenuSkip
 		+ _menu->height();
 	const auto available = height() - st::mainMenuCoverHeight - contentHeight;
+	const auto cardMarginX = 12;
+	const auto cardMarginBottom = 12;
+	const auto cardPaddingY = 10;
+	const auto cardHeight = _telegram->height() + 3 + _version->height() + 2 * cardPaddingY;
+	const auto minFooterHeight = std::max(
+		st::mainMenuFooterHeightMin,
+		cardHeight + cardMarginBottom + cardMarginX);
 	const auto footerHeight = std::max(
 		available,
-		st::mainMenuFooterHeightMin);
-	if (_footer->height() != footerHeight) {
-		_footer->resize(_footer->width(), footerHeight);
+		minFooterHeight);
+	const auto footerWidth = _footer->width() ? _footer->width() : width();
+	if (_footer->height() != footerHeight || _footer->width() != footerWidth) {
+		_footer->resize(footerWidth, footerHeight);
 	}
 }
 
@@ -926,14 +982,25 @@ void MainMenu::drawName(Painter &p) {
 	}
 	p.setFont(st::semiboldFont);
 	p.setPen(st::windowBoldFg);
+	const auto badgeWidth = _badge->widget()
+		? _badge->widget()->width()
+		: 0;
+	const auto faBadgeWidth = _faBadge->widget()
+		? _faBadge->widget()->width()
+		: 0;
+	const auto nameGap = badgeWidth ? st::semiboldFont->spacew : 0;
+	const auto faGap = faBadgeWidth
+		? st::infoVerifiedCheckPosition.x()
+		: 0;
+	const auto reserved = nameGap
+		+ badgeWidth
+		+ faGap
+		+ faBadgeWidth;
 	_name.drawLeftElided(
 		p,
 		st::mainMenuCoverNameLeft,
 		st::mainMenuCoverNameTop,
-		(widthText
-			- (_badge->widget()
-				? (st::semiboldFont->spacew + _badge->widget()->width())
-				: 0)),
+		widthText - reserved,
 		width());
 }
 
@@ -971,7 +1038,7 @@ void MainMenu::initResetScaleButton() {
 
 OthersUnreadState OtherAccountsUnreadStateCurrent(
 		not_null<Main::Account*> current) {
-	auto &domain = Core::App().domain();
+	const auto &domain = Core::App().domain();
 	auto counter = 0;
 	auto allMuted = true;
 	for (const auto &[index, account] : domain.accounts()) {
@@ -1039,7 +1106,7 @@ void MainMenu::setupSwipe() {
 	}
 
 	auto update = [=](Ui::Controls::SwipeContextData data) {
-		if (data.translation < 0) {
+		if (data.visualTranslation() < 0) {
 			if (!_swipeBackData.callback) {
 				_swipeBackData = Ui::Controls::SetupSwipeBack(
 					this,
@@ -1058,7 +1125,7 @@ void MainMenu::setupSwipe() {
 	};
 
 	auto init = [=](Ui::Controls::SwipeHandlerInitData data) {
-		if (data.direction != Qt::LeftToRight) {
+		if (data.fingerDirection() != Qt::LeftToRight) {
 			return Ui::Controls::SwipeHandlerFinishData();
 		}
 		if (_emojiStatusPanel && _emojiStatusPanel->hasFocus()) {

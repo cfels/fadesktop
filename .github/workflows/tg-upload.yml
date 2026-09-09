@@ -68,7 +68,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           sparse-checkout: |
-            scripts/tgupload.py
+            .github/scripts/tgupload.py
             Telegram/SourceFiles/fa/fa_version.h
 
       - name: Extract TGD version
@@ -100,18 +100,18 @@ jobs:
               COMPARE=$(curl -s -H "Accept: application/vnd.github+json" \
                 -H "Authorization: Bearer $GITHUB_TOKEN" \
                 "https://api.github.com/repos/$REPO/compare/$PREV_TAG...$HEAD_SHA")
-              CHANGELOG=$(echo "$COMPARE" | jq -r '[.commits[] | select(.author.login == "Burhanverse" or .committer.login == "Burhanverse") | .commit.message | split("\n")[0]] | map("• " + .) | join("\n")')
+              CHANGELOG=$(echo "$COMPARE" | jq -r '[.commits[]? | select(.author.login == "Burhanverse" or .committer.login == "Burhanverse") | "• " + (.commit.message | split("\n")[0]) + " [֍](" + .html_url + ")"] | reverse | join("\n")')
             fi
           else
             LAST_SHA=$(curl -s -H "Accept: application/vnd.github+json" \
               -H "Authorization: Bearer $GITHUB_TOKEN" \
               "https://api.github.com/repos/$REPO/actions/workflows/$WORKFLOW_ID/runs?status=completed&conclusion=success&branch=$BRANCH&per_page=2" \
-              | jq -r --arg head "$HEAD_SHA" '[.workflow_runs[] | select(.head_sha != $head)][0].head_sha // empty')
+              | jq -r --arg head "$HEAD_SHA" '[.workflow_runs[]? | select(.head_sha != $head)][0].head_sha // empty')
             if [ -n "$LAST_SHA" ]; then
               COMPARE=$(curl -s -H "Accept: application/vnd.github+json" \
                 -H "Authorization: Bearer $GITHUB_TOKEN" \
                 "https://api.github.com/repos/$REPO/compare/$LAST_SHA...$HEAD_SHA")
-              CHANGELOG=$(echo "$COMPARE" | jq -r '[.commits[] | select(.author.login == "Burhanverse" or .committer.login == "Burhanverse") | .commit.message | split("\n")[0]] | map("• " + .) | join("\n")')
+              CHANGELOG=$(echo "$COMPARE" | jq -r '[.commits[]? | select(.author.login == "Burhanverse" or .committer.login == "Burhanverse") | "• " + (.commit.message | split("\n")[0]) + " [֍](" + .html_url + ")"] | reverse | join("\n")')
             fi
           fi
 
@@ -124,7 +124,7 @@ jobs:
           echo "CHANGELOG_EOF" >> $GITHUB_ENV
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
@@ -136,7 +136,7 @@ jobs:
         with:
           name: fagram-${{ inputs.tagname }}
           path: artifacts/linux
-          github-token: ${{ secrets.PAT }}
+          github-token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
           run-id: ${{ inputs.linux_run_id || inputs.run_id }}
 
       - name: Download Windows portable artifact
@@ -144,7 +144,7 @@ jobs:
         with:
           name: FAgram_Win-x64
           path: artifacts/windows
-          github-token: ${{ secrets.PAT }}
+          github-token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
           run-id: ${{ inputs.windows_run_id || inputs.run_id }}
 
       - name: Download Windows installer artifact
@@ -152,7 +152,7 @@ jobs:
         with:
           name: FAgram_Win-x64_installer
           path: artifacts/windows-installer
-          github-token: ${{ secrets.PAT }}
+          github-token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
           run-id: ${{ inputs.windows_run_id || inputs.run_id }}
 
       - name: Download macOS artifact
@@ -161,7 +161,7 @@ jobs:
         with:
           name: fagram-mac-${{ inputs.tagname }}
           path: artifacts/mac
-          github-token: ${{ secrets.PAT }}
+          github-token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
           run-id: ${{ inputs.mac_run_id || inputs.run_id }}
         continue-on-error: true
 
@@ -181,53 +181,54 @@ jobs:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           API_ID: ${{ secrets.API_ID_CONFIG }}
           API_HASH: ${{ secrets.API_HASH_CONFIG }}
+          CHANGELOG: ${{ env.CHANGELOG }}
         run: |
           LINUX_FILE=$(find artifacts/linux -name "fagram-*.tar.zst" | head -1)
-          python3 scripts/tgupload.py "$LINUX_FILE" --chat-id ${{ secrets.CHAT_ID }} --caption "$(cat <<EOF
-          <b>FAgram Linux ${{ inputs.tagname }}</b>
-          TGD Base: <code>${{ env.TGD_VERSION }}</code>
-          Build Type: <code>${{ inputs.build_type }}</code>
-          Branch: <code>${{ github.ref_name }}</code>
-
-          <blockquote expandable>${{ env.CHANGELOG }}</blockquote>
-          EOF
-          )"
+          python3 .github/scripts/tgupload.py "$LINUX_FILE" \
+            --chat-id ${{ secrets.CHAT_ID }} \
+            --title "FAgram Linux ${{ inputs.tagname }}" \
+            --tgd-version "${{ env.TGD_VERSION }}" \
+            --build-type "${{ inputs.build_type }}" \
+            --branch "${{ github.ref_name }}"
 
       - name: Upload Windows builds to Telegram
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           API_ID: ${{ secrets.API_ID_CONFIG }}
           API_HASH: ${{ secrets.API_HASH_CONFIG }}
+          CHANGELOG: ${{ env.CHANGELOG }}
         run: |
           WIN_PORTABLE=$(find artifacts/windows -name "FAgram_Win-x64_*_portable.zip" | head -1)
           WIN_INSTALLER=$(find artifacts/windows-installer -name "fagram-setup_Win-x64.*.exe" | head -1)
-          python3 scripts/tgupload.py --files "$WIN_PORTABLE" "$WIN_INSTALLER" --chat-id ${{ secrets.CHAT_ID }} --caption "$(cat <<EOF
-          <b>FAgram Windows x64 ${{ inputs.tagname }}</b>
-          TGD Base: <code>${{ env.TGD_VERSION }}</code>
-          Build Type: <code>${{ inputs.build_type }}</code>
-          Branch: <code>${{ github.ref_name }}</code>
-
-          <blockquote expandable>${{ env.CHANGELOG }}</blockquote>
-          EOF
-          )"
+          FILES=()
+          [ -n "$WIN_PORTABLE" ] && [ -f "$WIN_PORTABLE" ] && FILES+=("$WIN_PORTABLE")
+          [ -n "$WIN_INSTALLER" ] && [ -f "$WIN_INSTALLER" ] && FILES+=("$WIN_INSTALLER")
+          if [ ${#FILES[@]} -gt 0 ]; then
+            python3 .github/scripts/tgupload.py --files "${FILES[@]}" \
+              --chat-id ${{ secrets.CHAT_ID }} \
+              --title "FAgram Windows x64 ${{ inputs.tagname }}" \
+              --tgd-version "${{ env.TGD_VERSION }}" \
+              --build-type "${{ inputs.build_type }}" \
+              --branch "${{ github.ref_name }}"
+          else
+            echo "No Windows artifacts found to upload."
+          fi
 
       - name: Upload macOS artifact to Telegram
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           API_ID: ${{ secrets.API_ID_CONFIG }}
           API_HASH: ${{ secrets.API_HASH_CONFIG }}
+          CHANGELOG: ${{ env.CHANGELOG }}
         run: |
           MAC_FILE=$(find artifacts/mac -name "fagram-mac-*.dmg" 2>/dev/null | head -1 || true)
           if [ -n "$MAC_FILE" ]; then
-            python3 scripts/tgupload.py "$MAC_FILE" --chat-id ${{ secrets.CHAT_ID }} --caption "$(cat <<EOF
-          <b>FAgram macOS ${{ inputs.tagname }}</b>
-          TGD Base: <code>${{ env.TGD_VERSION }}</code>
-          Build Type: <code>${{ inputs.build_type }}</code>
-          Branch: <code>${{ github.ref_name }}</code>
-
-          <blockquote expandable>${{ env.CHANGELOG }}</blockquote>
-          EOF
-          )"
+            python3 .github/scripts/tgupload.py "$MAC_FILE" \
+              --chat-id ${{ secrets.CHAT_ID }} \
+              --title "FAgram macOS ${{ inputs.tagname }}" \
+              --tgd-version "${{ env.TGD_VERSION }}" \
+              --build-type "${{ inputs.build_type }}" \
+              --branch "${{ github.ref_name }}"
           else
             echo "No macOS artifact found to upload."
           fi

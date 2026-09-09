@@ -6,7 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 */
 #include "ui/controls/userpic_button.h"
-#include "fa/ui/md3/fa_avatar_shape.h"
+#include "fa/features/avatar_shape/avatar_shape.h"
 
 #include "apiwrap.h"
 #include "api/api_peer_photo.h"
@@ -37,6 +37,7 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 #include "ui/ui_utility.h"
 #include "editor/photo_editor_common.h"
 #include "editor/photo_editor_layer_widget.h"
+#include "editor/video/video_editor_layer.h"
 #include "info/userpic/info_userpic_emoji_builder_common.h"
 #include "info/userpic/info_userpic_emoji_builder_menu_item.h"
 #include "media/streaming/media_streaming_instance.h"
@@ -247,10 +248,16 @@ void UserpicButton::prepare() {
 	}
 }
 
+void UserpicButton::setVideoAllowed(bool allowed) {
+	_videoAllowed = allowed;
+}
+
 void UserpicButton::showCustomOnChosen() {
 	chosenImages(
 	) | rpl::on_next([=](ChosenImage &&chosen) {
 		showCustom(std::move(chosen.image));
+		// After showCustom, which clears any previously picked clip.
+		_resultVideo = std::move(chosen.video);
 	}, lifetime());
 }
 
@@ -313,6 +320,13 @@ void UserpicButton::choosePhotoLocally() {
 			_chosenImages.fire({ std::move(image), type });
 		};
 	};
+	const auto mediaCallback = [=](ChosenType type) {
+		return [=](Editor::ProfileMedia &&media) {
+			auto chosen = ChosenImage{ std::move(media.image), type };
+			chosen.video = std::move(media.video);
+			_chosenImages.fire(std::move(chosen));
+		};
+	};
 	const auto editorData = [=](ChosenType type) {
 		const auto user = _peer ? _peer->asUser() : nullptr;
 		const auto name = (user && !user->firstName.isEmpty())
@@ -338,21 +352,33 @@ void UserpicButton::choosePhotoLocally() {
 			.confirm = ((type == ChosenType::Suggest)
 				? tr::lng_profile_suggest_button(tr::now)
 				: tr::lng_profile_set_photo_button(tr::now)),
+			.confirmVideo = ((type == ChosenType::Suggest)
+				? tr::lng_profile_suggest_button(tr::now)
+				: tr::lng_profile_video_confirm_button(tr::now)),
 			.cropType = (useForumShape()
 				? Editor::EditorData::CropType::RoundedRect
 				: Editor::EditorData::CropType::Ellipse),
 			.keepAspectRatio = true,
+			.forOtherUser = (user && !user->isSelf()),
 		};
 	};
 	const auto chooseFile = [=](ChosenType type) {
 		base::call_delayed(
 			_st.changeButton.ripple.hideDuration,
 			crl::guard(this, [=] {
-				PrepareProfilePhotoFromFile(
-					this,
-					_window,
-					editorData(type),
-					callback(type));
+				if (_videoAllowed) {
+					Editor::PrepareProfileMediaFromFile(
+						this,
+						_window,
+						editorData(type),
+						mediaCallback(type));
+				} else {
+					PrepareProfilePhotoFromFile(
+						this,
+						_window,
+						editorData(type),
+						callback(type));
+				}
 			}));
 	};
 	const auto user = _peer ? _peer->asUser() : nullptr;
@@ -421,7 +447,11 @@ void UserpicButton::choosePhotoLocally() {
 	} else {
 		const auto hasCamera = IsCameraAvailable();
 		if (hasCamera || _controller) {
-			_menu->addAction(tr::lng_attach_file(tr::now), [=] {
+			// Say what can actually be picked, which depends on the caller.
+			const auto choose = _videoAllowed
+				? tr::lng_attach_photo_or_video(tr::now)
+				: tr::lng_attach_file(tr::now);
+			_menu->addAction(choose, [=] {
 				chooseFile(ChosenType::Set);
 			}, &st::menuIconPhoto);
 			if (hasCamera) {
@@ -722,10 +752,8 @@ void UserpicButton::paintUserpicFrame(Painter &p, QPoint photoPosition) {
 		}
 		auto frame = _streamed->frame(request);
 
-		if (_shape == PeerUserpicShape::Material) {
-			if (_materialMask.isNull()) {
-				_materialMask = FA::Ui::MaterialShapeMask(request.resize);
-			}
+		if (_shape == PeerUserpicShape::Material || FA::Features::AvatarShape::IsMaterial()) {
+			_materialMask = FA::Features::AvatarShape::Mask(request.resize);
 			constexpr auto format = QImage::Format_ARGB32_Premultiplied;
 			if (frame.format() != format) {
 				frame = std::move(frame).convertToFormat(format);
@@ -772,8 +800,8 @@ QPoint UserpicButton::countPhotoPosition() const {
 
 QImage UserpicButton::prepareRippleMask() const {
 	const auto size = QSize(_st.photoSize, _st.photoSize);
-	if (_shape == PeerUserpicShape::Material) {
-		return FA::Ui::MaterialShapeMask(size * style::DevicePixelRatio());
+	if (_shape == PeerUserpicShape::Material || FA::Features::AvatarShape::IsMaterial()) {
+		return FA::Features::AvatarShape::Mask(size * style::DevicePixelRatio());
 	}
 	return useForumShape()
 		? Ui::RippleAnimation::RoundRectMask(
@@ -1140,6 +1168,8 @@ void UserpicButton::showCustom(QImage &&image) {
 	_userpic.setDevicePixelRatio(style::DevicePixelRatio());
 	_userpicUniqueKey = {};
 	_result = std::move(image);
+	// A plain still replaces whatever clip was picked before it.
+	_resultVideo = nullptr;
 
 	startNewPhotoShowing();
 }
@@ -1157,6 +1187,7 @@ void UserpicButton::showSource(Source source) {
 	_source = source;
 
 	_result = QImage();
+	_resultVideo = nullptr;
 
 	processPeerPhoto();
 	setupPeerViewers();
@@ -1214,8 +1245,8 @@ void UserpicButton::fillShape(QPainter &p, QBrush brush) const {
 	p.setPen(Qt::NoPen);
 	p.setBrush(brush);
 	const auto size = _st.photoSize;
-	if (_shape == PeerUserpicShape::Material) {
-		auto mask = FA::Ui::MaterialShapeMask(QSize(size, size) * style::DevicePixelRatio());
+	if (_shape == PeerUserpicShape::Material || FA::Features::AvatarShape::IsMaterial()) {
+		auto mask = FA::Features::AvatarShape::Mask(QSize(size, size) * style::DevicePixelRatio());
 		mask.setDevicePixelRatio(style::DevicePixelRatio());
 		auto q = QPainter(&mask);
 		q.setCompositionMode(QPainter::CompositionMode_SourceIn);
@@ -1258,8 +1289,8 @@ void UserpicButton::prepareUserpicPixmap() {
 						QSize(size, size) * ratio,
 						Qt::IgnoreAspectRatio,
 						Qt::SmoothTransformation);
-					image = (_shape == PeerUserpicShape::Material)
-						? FA::Ui::ApplyMaterialShape(std::move(image))
+					image = (_shape == PeerUserpicShape::Material || FA::Features::AvatarShape::IsMaterial())
+						? FA::Features::AvatarShape::Apply(std::move(image))
 						: useForumShape()
 						? Images::Round(
 							std::move(image),
@@ -1276,13 +1307,13 @@ void UserpicButton::prepareUserpicPixmap() {
 					((user && user->isInaccessible())
 						? Ui::EmptyUserpic::InaccessibleName()
 						: _peer->name()));
-				if (_shape == PeerUserpicShape::Material) {
+				if (_shape == PeerUserpicShape::Material || FA::Features::AvatarShape::IsMaterial()) {
 					auto image = QImage(QSize(size, size) * style::DevicePixelRatio(), QImage::Format_ARGB32_Premultiplied);
 					image.fill(Qt::transparent);
 					auto q = QPainter(&image);
 					empty.paintSquare(q, 0, 0, size, size);
 					q.end();
-					image = FA::Ui::ApplyMaterialShape(std::move(image));
+					image = FA::Features::AvatarShape::Apply(std::move(image));
 					image.setDevicePixelRatio(style::DevicePixelRatio());
 					p.drawImage(0, 0, image);
 				} else if (useForumShape()) {

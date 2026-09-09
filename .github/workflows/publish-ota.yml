@@ -19,6 +19,10 @@ on:
         description: "Fallback run ID to download OTA artifacts from"
         type: string
         required: false
+      channel:
+        description: "Force channel ('stable' or 'beta'). If omitted, read from BetaChannel in version file."
+        type: string
+        required: false
   workflow_call:
     inputs:
       linux_run_id:
@@ -35,6 +39,10 @@ on:
         required: false
       run_id:
         description: "Fallback run ID to download OTA artifacts from"
+        type: string
+        required: false
+      channel:
+        description: "Force channel ('stable' or 'beta'). If omitted, read from BetaChannel in version file."
         type: string
         required: false
 
@@ -65,7 +73,7 @@ jobs:
           name: ota-win64
           path: ota-artifacts/win64
           run-id: ${{ inputs.windows_run_id || inputs.run_id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
 
       - name: Download Linux OTA artifact
         uses: actions/download-artifact@v8
@@ -73,7 +81,7 @@ jobs:
           name: ota-linux
           path: ota-artifacts/linux
           run-id: ${{ inputs.linux_run_id || inputs.run_id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
 
       - name: Download macOS OTA artifact
         if: ${{ inputs.mac_run_id != '' || inputs.run_id != '' }}
@@ -82,7 +90,7 @@ jobs:
           name: ota-macos
           path: ota-artifacts/macos
           run-id: ${{ inputs.mac_run_id || inputs.run_id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
         continue-on-error: true
 
       - name: Clone OTA repo
@@ -125,7 +133,9 @@ jobs:
           LINUX_NAME=$(basename "$LINUX_FILE")
           MAC_NAME=$([ -n "$MAC_FILE" ] && basename "$MAC_FILE" || true)
           CHANNEL="stable"
-          if [ "$IS_BETA" = "1" ]; then
+          if [ -n "${{ inputs.channel }}" ]; then
+            CHANNEL="${{ inputs.channel }}"
+          elif [ "$IS_BETA" = "1" ]; then
             CHANNEL="beta"
           fi
 
@@ -135,11 +145,17 @@ jobs:
             RELEASE_TAG="${RELEASE_TAG}-beta"
           fi
 
+          PRERELEASE_FLAG=""
+          if [ "$CHANNEL" = "beta" ]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+
           if ! gh release view "$RELEASE_TAG" --repo "$RELEASE_REPO" >/dev/null 2>&1; then
             gh release create "$RELEASE_TAG" \
               --repo "$RELEASE_REPO" \
               --title "OTA ${APP_VERSION} (${CHANNEL})" \
-              --notes "Automated OTA artifacts for version ${APP_VERSION} (${CHANNEL})."
+              --notes "Automated OTA artifacts for version ${APP_VERSION} (${CHANNEL})." \
+              $PRERELEASE_FLAG
           fi
 
           if [ -n "$MAC_FILE" ]; then
@@ -165,7 +181,10 @@ jobs:
           import os
           from pathlib import Path
 
-          manifest_path = 'current4'
+          # The merged build now requests "current6" (lib_base AutoUpdateVersion
+          # bumped 4 -> 6). Keep "current4" updated as well so older clients
+          # still on the v4 feed keep getting updates until they migrate.
+          manifest_paths = ['current6', 'current4']
           version = os.environ['APP_VERSION']
           channel = os.environ['CHANNEL']
           release_tag = os.environ['RELEASE_TAG']
@@ -174,57 +193,85 @@ jobs:
           mac_name = os.environ.get('MAC_NAME', '')
 
           base = f"https://github.com/fagramdesktop/ota/releases/download/{release_tag}"
-          manifest = {}
-
-          existing = Path('current4')
-          if existing.exists():
-            try:
-              loaded = json.loads(existing.read_text())
-              if isinstance(loaded, dict):
-                manifest = loaded
-            except Exception:
-              manifest = {}
-
-          manifest.setdefault('win64', {})[channel] = {
-            'released': version,
-            'link': f'{base}/{win_name}',
+          entries = {
+            'win64': {
+              channel: {
+                'released': version,
+                'link': f'{base}/{win_name}',
+              },
+            },
+            'linux': {
+              channel: {
+                'released': version,
+                'link': f'{base}/{linux_name}',
+              },
+            },
           }
-          manifest.setdefault('linux', {})[channel] = {
-            'released': version,
-            'link': f'{base}/{linux_name}',
-          }
-
           if mac_name:
             mac_entry = {
               'released': version,
               'link': f'{base}/{mac_name}',
             }
-            manifest.setdefault('mac', {})[channel] = mac_entry
-            manifest.setdefault('armac', {})[channel] = dict(mac_entry)
+            entries['mac'] = {channel: mac_entry}
+            entries['armac'] = {channel: dict(mac_entry)}
 
-          with open(manifest_path, 'w') as f:
-            json.dump(manifest, f, indent=2, sort_keys=True)
-            f.write('\n')
+          # Read existing manifest (checking current4 or current6) so
+          # freshly written manifests carry the same channels for every
+          # other platform and both files stay byte-identical.
+          manifest = {}
+          for existing_name in ['current4', 'current6']:
+            existing = Path(existing_name)
+            if existing.exists():
+              try:
+                loaded = json.loads(existing.read_text())
+                if isinstance(loaded, dict) and loaded:
+                  manifest = loaded
+                  break
+              except Exception:
+                pass
+
+          for platform, channels in entries.items():
+            for ch, data in channels.items():
+              existing_ver = manifest.get(platform, {}).get(ch, {}).get('released')
+              if existing_ver:
+                try:
+                  if int(data['released']) <= int(existing_ver):
+                    print(f"::warning::Published version {data['released']} is not greater than existing version {existing_ver} on {platform}/{ch}!")
+                except ValueError:
+                  pass
+            manifest.setdefault(platform, {}).update(channels)
+
+          for manifest_path in manifest_paths:
+            with open(manifest_path, 'w') as f:
+              json.dump(manifest, f, indent=2, sort_keys=True)
+              f.write('\n')
           PY
 
-          git add current4
+          git add current6 current4
           if git diff --cached --quiet; then
             echo "No manifest changes to commit."
           else
-            git commit -m "Update OTA manifest for ${APP_VERSION} (${CHANNEL})"
+            git commit -m "Update OTA manifests for ${APP_VERSION} (${CHANNEL})"
             git push origin "$OTA_BRANCH"
           fi
 
       - name: Summary
         run: |
+          CHANNEL="stable"
+          if [ -n "${{ inputs.channel }}" ]; then
+            CHANNEL="${{ inputs.channel }}"
+          elif [ "$IS_BETA" = "1" ]; then
+            CHANNEL="beta"
+          fi
           RELEASE_TAG="ota-v${APP_VERSION}"
-          if [ "$IS_BETA" = "1" ]; then
+          if [ "$CHANNEL" = "beta" ]; then
             RELEASE_TAG="${RELEASE_TAG}-beta"
           fi
           echo "### OTA Update Published" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Version:** ${APP_VERSION}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Channel:** ${CHANNEL}" >> $GITHUB_STEP_SUMMARY
           echo "- **Release tag:** ${RELEASE_TAG}" >> $GITHUB_STEP_SUMMARY
           echo "- **Windows:** tx64upd${APP_VERSION}" >> $GITHUB_STEP_SUMMARY
           echo "- **Linux:** tlinuxupd${APP_VERSION}" >> $GITHUB_STEP_SUMMARY
-          echo "- **macOS:** tmacupd${APP_VERSION}" >> $GITHUB_STEP_SUMMARY
+          [ -n "$MAC_NAME" ] && echo "- **macOS:** $MAC_NAME" >> $GITHUB_STEP_SUMMARY || true

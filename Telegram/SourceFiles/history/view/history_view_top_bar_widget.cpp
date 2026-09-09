@@ -8,6 +8,7 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 #include "history/view/history_view_top_bar_widget.h"
 
 #include "fa/settings/fa_settings.h"
+#include "fa/features/round_numbers/round_numbers.h"
 #include "boxes/peers/edit_participants_box.h" 
 #include "history/admin_log/history_admin_log_section.h"
 #include "styles/style_fa_styles.h"
@@ -42,6 +43,7 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 #include "ui/text/text_options.h"
 #include "ui/painter.h"
 #include "ui/unread_badge.h"
+#include "ui/controls/button_context_menu.h"
 #include "ui/ui_utility.h"
 #include "window/window_adaptive.h"
 #include "window/window_session_controller.h"
@@ -159,6 +161,11 @@ TopBarWidget::TopBarWidget(
 	Lang::Updated(
 	) | rpl::on_next([=] {
 		refreshLang();
+	}, lifetime());
+
+	FA::Features::RoundNumbers::Value(
+	) | rpl::on_next([=] {
+		updateOnlineDisplay();
 	}, lifetime());
 
 	_forward->setClickedCallback([=] { _forwardSelection.fire({}); });
@@ -403,16 +410,29 @@ bool TopBarWidget::createMenu(
 			: st::defaultPopupMenu);
 	_menu->setDestroyedCallback([
 			weak = base::make_weak(this),
-			weakButton = base::make_weak(button),
 			menu = _menu.get()] {
 		if (weak && weak->_menu == menu) {
-			if (weakButton) {
-				weakButton->setForceRippled(false);
-			}
+			weak->unrippleMenuButton();
 		}
 	});
+	_menuButton = button;
 	button->setForceRippled(true);
+	Ui::KeepHoveredWhileShown(button, _menu.get());
 	return true;
+}
+
+void TopBarWidget::unrippleMenuButton() {
+	if (const auto button = _menuButton.get()) {
+		button->setForceRippled(false);
+		Ui::SendSynteticMouseEvent(button, QEvent::MouseMove, Qt::NoButton);
+	}
+}
+
+void TopBarWidget::closeMenu() {
+	if (_menu) {
+		_menu = nullptr;
+		unrippleMenuButton();
+	}
 }
 
 void TopBarWidget::showPeerMenu() {
@@ -423,7 +443,7 @@ void TopBarWidget::showPeerMenu() {
 	const auto addAction = Ui::Menu::CreateAddActionCallback(_menu);
 	Window::FillDialogsEntryMenu(_controller, _activeChat, addAction);
 	if (_menu->empty()) {
-		_menu = nullptr;
+		closeMenu();
 	} else {
 		_menu->setForcedOrigin(Ui::PanelAnimation::Origin::TopRight);
 		_menu->popup(Ui::PopupMenu::ConstrainToParentScreen(
@@ -616,6 +636,7 @@ void TopBarWidget::paintTopBar(Painter &p) {
 			&& _activeChat.section != Section::SavedSublist)
 		|| (_activeChat.section == Section::Scheduled)
 		|| (_activeChat.section == Section::Pinned)
+		|| (_activeChat.section == Section::WelcomeMessages)
 		|| communityChatsListBar()) {
 		auto text = (_activeChat.section == Section::Scheduled)
 			? ((peer && peer->isSelf())
@@ -623,6 +644,8 @@ void TopBarWidget::paintTopBar(Painter &p) {
 				: tr::lng_scheduled_messages(tr::now))
 			: (_activeChat.section == Section::Pinned)
 			? _customTitleText
+			: (_activeChat.section == Section::WelcomeMessages)
+			? tr::lng_welcome_messages_title(tr::now)
 			: folder
 			? folder->chatListName()
 			: peer->isSelf()
@@ -700,6 +723,8 @@ void TopBarWidget::paintTopBar(Painter &p) {
 			.nameWidth = _title.maxWidth(),
 			.outerWidth = width(),
 			.verified = &st::dialogsVerifiedIcon,
+			.fagramOfficial = &st::dialogsFAgramOfficialIcon.icon,
+			.fagramSupporter = &st::dialogsFAgramSupporterIcon.icon,
 			.premium = &st::dialogsPremiumIcon.icon,
 			.scam = &st::attentionButtonFg,
 			.direct = &st::windowSubTextFg,
@@ -848,7 +873,7 @@ void TopBarWidget::mousePressEvent(QMouseEvent *e) {
 		if ((_animatingMode && _back->rect().contains(e->pos()))
 			|| archiveTop) {
 			if (!rootChatsListBar()) {
-				backClicked();
+				InvokeQueued(this, [=] { backClicked(); });
 			}
 		} else {
 			infoClicked();
@@ -865,9 +890,7 @@ void TopBarWidget::infoClicked() {
 	} else if (const auto sublist = key.sublist()) {
 		_controller->showSection(std::make_shared<Info::Memento>(sublist));
 	} else if (key.peer()->savedSublistsInfo()) {
-		_controller->showSection(std::make_shared<Info::Memento>(
-			key.peer(),
-			Info::Section::Type::SavedSublists));
+		_controller->showSection(Info::Memento::Default(key.peer()));
 	} else if (key.peer()->sharedMediaInfo()) {
 		_controller->showSection(std::make_shared<Info::Memento>(
 			key.peer(),
@@ -986,9 +1009,7 @@ void TopBarWidget::setActiveChat(
 	}
 	updateUnreadBadge();
 	refreshInfoButton();
-	if (_menu) {
-		_menu = nullptr;
-	}
+	closeMenu();
 	updateOnlineDisplay();
 	updateControlsVisibility();
 	refreshUnreadBadge();
@@ -1334,6 +1355,8 @@ void TopBarWidget::setAnimatingMode(bool enabled) {
 		_animatingMode = enabled;
 		setAttribute(Qt::WA_OpaquePaintEvent, !_animatingMode);
 		finishAnimating();
+	} else if (!enabled) {
+		finishAnimating();
 	}
 }
 
@@ -1391,6 +1414,8 @@ void TopBarWidget::updateControlsVisibility() {
 		? !_activeChat.key.folder()
 		: (section == Section::Scheduled)
 		? (hasPollsMenu || hasTodoListsMenu)
+		: (section == Section::WelcomeMessages)
+		? true
 		: (section == Section::Replies)
 		? (hasPollsMenu || hasTodoListsMenu || hasTopicMenu)
 		: (section == Section::ChatsList)

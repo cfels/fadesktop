@@ -15,6 +15,7 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 #include <algorithm>
 #include "core/application.h"
 #include "core/file_utilities.h"
+#include "settings.h"
 
 namespace FASettings {
 
@@ -105,6 +106,7 @@ void FASettings::loadFromJson(const QJsonObject &obj) {
 	_disableAi = obj.contains("disable_ai") ? obj["disable_ai"].toBool() : _disableAi.current();
 	_disableAnimatedAvatars = obj.contains("disable_animated_avatars") ? obj["disable_animated_avatars"].toBool() : _disableAnimatedAvatars.current();
 	_disableAutoDownload = obj.contains("disable_auto_download") ? obj["disable_auto_download"].toBool() : _disableAutoDownload.current();
+	_disableAutoUpdate = obj.contains("disable_auto_update") ? obj["disable_auto_update"].toBool() : _disableAutoUpdate.current();
 	_showStartToken = obj.contains("show_start_token") ? obj["show_start_token"].toBool() : _showStartToken.current();
 	_showPeerId = obj.contains("show_peer_id") ? obj["show_peer_id"].toBool() : _showPeerId.current();
 	_showDcId = obj.contains("show_dc_id") ? obj["show_dc_id"].toBool() : _showDcId.current();
@@ -112,13 +114,16 @@ void FASettings::loadFromJson(const QJsonObject &obj) {
 	_showRegistrationDate = obj.contains("show_registration_date") ? obj["show_registration_date"].toBool() : _showRegistrationDate.current();
 	_disableCustomChatBackground = obj.contains("disable_custom_chat_background") ? obj["disable_custom_chat_background"].toBool() : _disableCustomChatBackground.current();
 	_hideAllChatsFolder = obj.contains("hide_all_chats_folder") ? obj["hide_all_chats_folder"].toBool() : _hideAllChatsFolder.current();
+	_hideArchiveChats = obj.contains("hide_archive_chats") ? obj["hide_archive_chats"].toBool() : _hideArchiveChats.current();
 	_hideStories = obj.contains("hide_stories") ? obj["hide_stories"].toBool() : _hideStories.current();
 	_hideOpenWebappButtonChatlist = obj.contains("hide_open_webapp_button_chatlist") ? obj["hide_open_webapp_button_chatlist"].toBool() : _hideOpenWebappButtonChatlist.current();
 	_localPremium = obj.contains("local_premium") ? obj["local_premium"].toBool() : _localPremium.current();
 	_deleteForEveryone = obj.contains("delete_for_everyone") ? obj["delete_for_everyone"].toBool() : _deleteForEveryone.current();
 	_lastSeenTimestamp = obj.contains("last_seen_timestamp") ? obj["last_seen_timestamp"].toBool() : _lastSeenTimestamp.current();
 	_showForwardedDateInTitle = obj.contains("show_forwarded_date_in_title") ? obj["show_forwarded_date_in_title"].toBool() : _showForwardedDateInTitle.current();
+	_showForwardsCount = obj.contains("show_forwards_count") ? obj["show_forwards_count"].toBool() : _showForwardsCount.current();
 	_disableGreetingSticker = obj.contains("disable_greeting_sticker") ? obj["disable_greeting_sticker"].toBool() : _disableGreetingSticker.current();
+	_roundGroupChannelNumbers = obj.contains("round_group_channel_numbers") ? obj["round_group_channel_numbers"].toBool() : _roundGroupChannelNumbers.current();
 	_useDefaultRounding = obj.contains("use_default_rounding") ? obj["use_default_rounding"].toBool() : _useDefaultRounding.current();
 	_showDiscussButton = obj.contains("show_discuss_button") ? obj["show_discuss_button"].toBool() : _showDiscussButton.current();
 	_showFastshareInChats = obj.contains("show_fastshare_in_chats") ? obj["show_fastshare_in_chats"].toBool() : _showFastshareInChats.current();
@@ -136,10 +141,12 @@ void FASettings::loadFromJson(const QJsonObject &obj) {
 	_useMaterialIconPack = obj.contains("use_material_icon_pack") ? obj["use_material_icon_pack"].toBool() : _useMaterialIconPack.current();
 	_shareMenuFolderIcons = obj.contains("share_menu_folder_icons") ? obj["share_menu_folder_icons"].toBool() : _shareMenuFolderIcons.current();
 	_avatarShape = obj.contains("avatar_shape") ? obj["avatar_shape"].toInt() : _avatarShape.current();
+	_avatarShapeOutline = obj.contains("avatar_shape_outline") ? obj["avatar_shape_outline"].toBool() : _avatarShapeOutline.current();
 	_disablePremiumAnimation = obj.contains("disable_premium_animation") ? obj["disable_premium_animation"].toBool() : _disablePremiumAnimation.current();
 	_screenshotMode = obj.contains("screenshot_mode") ? obj["screenshot_mode"].toBool() : _screenshotMode.current();
 	_autoFormatMarkdown = obj.contains("auto_format_markdown") ? obj["auto_format_markdown"].toBool() : _autoFormatMarkdown.current();
 	_addCommaAfterMention = obj.contains("add_comma_after_mention") ? obj["add_comma_after_mention"].toBool() : _addCommaAfterMention.current();
+	_disableLinkPreview = obj.contains("disable_link_preview") ? obj["disable_link_preview"].toBool() : _disableLinkPreview.current();
 	_contextMenuShortcutButtonSize = obj.contains("context_menu_shortcut_button_size") ? obj["context_menu_shortcut_button_size"].toInt() : _contextMenuShortcutButtonSize.current();
 	_contextMenuShortcutIconSize = obj.contains("context_menu_shortcut_icon_size") ? obj["context_menu_shortcut_icon_size"].toInt() : _contextMenuShortcutIconSize.current();
 	_contextMenuShortcutSpacing = obj.contains("context_menu_shortcut_spacing") ? obj["context_menu_shortcut_spacing"].toInt() : _contextMenuShortcutSpacing.current();
@@ -157,6 +164,7 @@ QJsonObject FASettings::saveToJson() const {
 	obj["disable_ai"] = _disableAi.current();
 	obj["disable_animated_avatars"] = _disableAnimatedAvatars.current();
 	obj["disable_auto_download"] = _disableAutoDownload.current();
+	obj["disable_auto_update"] = _disableAutoUpdate.current();
 	obj["show_start_token"] = _showStartToken.current();
 	obj["show_peer_id"] = _showPeerId.current();
 	obj["show_dc_id"] = _showDcId.current();
@@ -164,13 +172,16 @@ QJsonObject FASettings::saveToJson() const {
 	obj["show_registration_date"] = _showRegistrationDate.current();
 	obj["disable_custom_chat_background"] = _disableCustomChatBackground.current();
 	obj["hide_all_chats_folder"] = _hideAllChatsFolder.current();
+	obj["hide_archive_chats"] = _hideArchiveChats.current();
 	obj["hide_stories"] = _hideStories.current();
 	obj["hide_open_webapp_button_chatlist"] = _hideOpenWebappButtonChatlist.current();
 	obj["local_premium"] = _localPremium.current();
 	obj["delete_for_everyone"] = _deleteForEveryone.current();
 	obj["last_seen_timestamp"] = _lastSeenTimestamp.current();
 	obj["show_forwarded_date_in_title"] = _showForwardedDateInTitle.current();
+	obj["show_forwards_count"] = _showForwardsCount.current();
 	obj["disable_greeting_sticker"] = _disableGreetingSticker.current();
+	obj["round_group_channel_numbers"] = _roundGroupChannelNumbers.current();
 	obj["use_default_rounding"] = _useDefaultRounding.current();
 	obj["show_discuss_button"] = _showDiscussButton.current();
 	obj["show_fastshare_in_chats"] = _showFastshareInChats.current();
@@ -188,10 +199,12 @@ QJsonObject FASettings::saveToJson() const {
 	obj["use_material_icon_pack"] = _useMaterialIconPack.current();
 	obj["share_menu_folder_icons"] = _shareMenuFolderIcons.current();
 	obj["avatar_shape"] = _avatarShape.current();
+	obj["avatar_shape_outline"] = _avatarShapeOutline.current();
 	obj["disable_premium_animation"] = _disablePremiumAnimation.current();
 	obj["screenshot_mode"] = _screenshotMode.current();
 	obj["auto_format_markdown"] = _autoFormatMarkdown.current();
 	obj["add_comma_after_mention"] = _addCommaAfterMention.current();
+	obj["disable_link_preview"] = _disableLinkPreview.current();
 	obj["context_menu_shortcut_button_size"] = _contextMenuShortcutButtonSize.current();
 	obj["context_menu_shortcut_icon_size"] = _contextMenuShortcutIconSize.current();
 	obj["context_menu_shortcut_spacing"] = _contextMenuShortcutSpacing.current();
@@ -255,6 +268,12 @@ void FASettings::setDisableAutoDownload(bool val) {
 	save();
 }
 
+void FASettings::setDisableAutoUpdate(bool val) {
+	if (_disableAutoUpdate.current() == val) return;
+	_disableAutoUpdate = val;
+	save();
+}
+
 void FASettings::setShowStartToken(bool val) {
 	if (_showStartToken.current() == val) return;
 	_showStartToken = val;
@@ -297,6 +316,12 @@ void FASettings::setHideAllChatsFolder(bool val) {
 	save();
 }
 
+void FASettings::setHideArchiveChats(bool val) {
+	if (_hideArchiveChats.current() == val) return;
+	_hideArchiveChats = val;
+	save();
+}
+
 void FASettings::setHideStories(bool val) {
 	if (_hideStories.current() == val) return;
 	_hideStories = val;
@@ -333,9 +358,21 @@ void FASettings::setShowForwardedDateInTitle(bool val) {
 	save();
 }
 
+void FASettings::setShowForwardsCount(bool val) {
+	if (_showForwardsCount.current() == val) return;
+	_showForwardsCount = val;
+	save();
+}
+
 void FASettings::setDisableGreetingSticker(bool val) {
 	if (_disableGreetingSticker.current() == val) return;
 	_disableGreetingSticker = val;
+	save();
+}
+
+void FASettings::setRoundGroupChannelNumbers(bool val) {
+	if (_roundGroupChannelNumbers.current() == val) return;
+	_roundGroupChannelNumbers = val;
 	save();
 }
 
@@ -441,6 +478,12 @@ void FASettings::setAvatarShape(int val) {
 	save();
 }
 
+void FASettings::setAvatarShapeOutline(bool val) {
+	if (_avatarShapeOutline.current() == val) return;
+	_avatarShapeOutline = val;
+	save();
+}
+
 void FASettings::setDisablePremiumAnimation(bool val) {
 	if (_disablePremiumAnimation.current() == val) return;
 	_disablePremiumAnimation = val;
@@ -462,6 +505,12 @@ void FASettings::setAutoFormatMarkdown(bool val) {
 void FASettings::setAddCommaAfterMention(bool val) {
 	if (_addCommaAfterMention.current() == val) return;
 	_addCommaAfterMention = val;
+	save();
+}
+
+void FASettings::setDisableLinkPreview(bool val) {
+	if (_disableLinkPreview.current() == val) return;
+	_disableLinkPreview = val;
 	save();
 }
 

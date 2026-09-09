@@ -43,6 +43,7 @@ public:
 	[[nodiscard]] bool disableAi() const { return _disableAi.current(); }
 	[[nodiscard]] bool disableAnimatedAvatars() const { return _disableAnimatedAvatars.current(); }
 	[[nodiscard]] bool disableAutoDownload() const { return _disableAutoDownload.current(); }
+	[[nodiscard]] bool disableAutoUpdate() const { return _disableAutoUpdate.current(); }
 	[[nodiscard]] bool showStartToken() const { return _showStartToken.current(); }
 	[[nodiscard]] bool showPeerId() const { return _showPeerId.current(); }
 	[[nodiscard]] bool showDcId() const { return _showDcId.current(); }
@@ -50,13 +51,16 @@ public:
 	[[nodiscard]] bool showRegistrationDate() const { return _showRegistrationDate.current(); }
 	[[nodiscard]] bool disableCustomChatBackground() const { return _disableCustomChatBackground.current(); }
 	[[nodiscard]] bool hideAllChatsFolder() const { return _hideAllChatsFolder.current(); }
+	[[nodiscard]] bool hideArchiveChats() const { return _hideArchiveChats.current(); }
 	[[nodiscard]] bool hideStories() const { return _hideStories.current(); }
 	[[nodiscard]] bool hideOpenWebappButtonChatlist() const { return _hideOpenWebappButtonChatlist.current(); }
 	[[nodiscard]] bool localPremium() const { return _localPremium.current(); }
 	[[nodiscard]] bool deleteForEveryone() const { return _deleteForEveryone.current(); }
 	[[nodiscard]] bool lastSeenTimestamp() const { return _lastSeenTimestamp.current(); }
 	[[nodiscard]] bool showForwardedDateInTitle() const { return _showForwardedDateInTitle.current(); }
+	[[nodiscard]] bool showForwardsCount() const { return _showForwardsCount.current(); }
 	[[nodiscard]] bool disableGreetingSticker() const { return _disableGreetingSticker.current(); }
+	[[nodiscard]] bool roundGroupChannelNumbers() const { return _roundGroupChannelNumbers.current(); }
 	[[nodiscard]] bool useDefaultRounding() const { return _useDefaultRounding.current(); }
 	[[nodiscard]] bool showDiscussButton() const { return _showDiscussButton.current(); }
 	[[nodiscard]] bool showFastshareInChats() const { return _showFastshareInChats.current(); }
@@ -76,6 +80,7 @@ public:
 	[[nodiscard]] bool screenshotMode() const { return _screenshotMode.current(); }
 	[[nodiscard]] bool autoFormatMarkdown() const { return _autoFormatMarkdown.current(); }
 	[[nodiscard]] bool addCommaAfterMention() const { return _addCommaAfterMention.current(); }
+	[[nodiscard]] bool disableLinkPreview() const { return _disableLinkPreview.current(); }
 	[[nodiscard]] int contextMenuShortcutButtonSize() const { return _contextMenuShortcutButtonSize.current(); }
 	[[nodiscard]] int contextMenuShortcutIconSize() const { return _contextMenuShortcutIconSize.current(); }
 	[[nodiscard]] int contextMenuShortcutSpacing() const { return _contextMenuShortcutSpacing.current(); }
@@ -84,6 +89,7 @@ public:
 	[[nodiscard]] int contextMenuShortcutCornerRadius() const { return _contextMenuShortcutCornerRadius.current(); }
 	[[nodiscard]] int roundness() const { return _roundness.current(); }
 	[[nodiscard]] int avatarShape() const { return _avatarShape.current(); }
+	[[nodiscard]] bool avatarShapeOutline() const { return _avatarShapeOutline.current(); }
 	[[nodiscard]] int translationProvider() const { return _translationProvider.current(); }
 
 	// Type-safe setters
@@ -93,6 +99,7 @@ public:
 	void setDisableAi(bool val);
 	void setDisableAnimatedAvatars(bool val);
 	void setDisableAutoDownload(bool val);
+	void setDisableAutoUpdate(bool val);
 	void setShowStartToken(bool val);
 	void setShowPeerId(bool val);
 	void setShowDcId(bool val);
@@ -100,13 +107,16 @@ public:
 	void setShowRegistrationDate(bool val);
 	void setDisableCustomChatBackground(bool val);
 	void setHideAllChatsFolder(bool val);
+	void setHideArchiveChats(bool val);
 	void setHideStories(bool val);
 	void setHideOpenWebappButtonChatlist(bool val);
 	void setLocalPremium(bool val);
 	void setDeleteForEveryone(bool val);
 	void setLastSeenTimestamp(bool val);
 	void setShowForwardedDateInTitle(bool val);
+	void setShowForwardsCount(bool val);
 	void setDisableGreetingSticker(bool val);
+	void setRoundGroupChannelNumbers(bool val);
 	void setUseDefaultRounding(bool val);
 	void setShowDiscussButton(bool val);
 	void setShowFastshareInChats(bool val);
@@ -124,10 +134,12 @@ public:
 	void setUseMaterialIconPack(bool val);
 	void setShareMenuFolderIcons(bool val);
 	void setAvatarShape(int val);
+	void setAvatarShapeOutline(bool val);
 	void setDisablePremiumAnimation(bool val);
 	void setScreenshotMode(bool val);
 	void setAutoFormatMarkdown(bool val);
 	void setAddCommaAfterMention(bool val);
+	void setDisableLinkPreview(bool val);
 	void setContextMenuShortcutButtonSize(int val);
 	void setContextMenuShortcutIconSize(int val);
 	void setContextMenuShortcutSpacing(int val);
@@ -143,6 +155,7 @@ public:
 	[[nodiscard]] rpl::producer<bool> disableAiValue() const { return _disableAi.value(); }
 	[[nodiscard]] rpl::producer<bool> disableAnimatedAvatarsValue() const { return _disableAnimatedAvatars.value(); }
 	[[nodiscard]] rpl::producer<bool> disableAutoDownloadValue() const { return _disableAutoDownload.value(); }
+	[[nodiscard]] rpl::producer<bool> disableAutoUpdateValue() const { return _disableAutoUpdate.value(); }
 	[[nodiscard]] rpl::producer<bool> showStartTokenValue() const { return _showStartToken.value(); }
 	[[nodiscard]] rpl::producer<bool> showPeerIdValue() const { return _showPeerId.value(); }
 	[[nodiscard]] rpl::producer<bool> showDcIdValue() const { return _showDcId.value(); }
@@ -150,13 +163,16 @@ public:
 	[[nodiscard]] rpl::producer<bool> showRegistrationDateValue() const { return _showRegistrationDate.value(); }
 	[[nodiscard]] rpl::producer<bool> disableCustomChatBackgroundValue() const { return _disableCustomChatBackground.value(); }
 	[[nodiscard]] rpl::producer<bool> hideAllChatsFolderValue() const { return _hideAllChatsFolder.value(); }
+	[[nodiscard]] rpl::producer<bool> hideArchiveChatsValue() const { return _hideArchiveChats.value(); }
 	[[nodiscard]] rpl::producer<bool> hideStoriesValue() const { return _hideStories.value(); }
 	[[nodiscard]] rpl::producer<bool> hideOpenWebappButtonChatlistValue() const { return _hideOpenWebappButtonChatlist.value(); }
 	[[nodiscard]] rpl::producer<bool> localPremiumValue() const { return _localPremium.value(); }
 	[[nodiscard]] rpl::producer<bool> deleteForEveryoneValue() const { return _deleteForEveryone.value(); }
 	[[nodiscard]] rpl::producer<bool> lastSeenTimestampValue() const { return _lastSeenTimestamp.value(); }
 	[[nodiscard]] rpl::producer<bool> showForwardedDateInTitleValue() const { return _showForwardedDateInTitle.value(); }
+	[[nodiscard]] rpl::producer<bool> showForwardsCountValue() const { return _showForwardsCount.value(); }
 	[[nodiscard]] rpl::producer<bool> disableGreetingStickerValue() const { return _disableGreetingSticker.value(); }
+	[[nodiscard]] rpl::producer<bool> roundGroupChannelNumbersValue() const { return _roundGroupChannelNumbers.value(); }
 	[[nodiscard]] rpl::producer<bool> useDefaultRoundingValue() const { return _useDefaultRounding.value(); }
 	[[nodiscard]] rpl::producer<bool> showDiscussButtonValue() const { return _showDiscussButton.value(); }
 	[[nodiscard]] rpl::producer<bool> showFastshareInChatsValue() const { return _showFastshareInChats.value(); }
@@ -176,6 +192,7 @@ public:
 	[[nodiscard]] rpl::producer<bool> screenshotModeValue() const { return _screenshotMode.value(); }
 	[[nodiscard]] rpl::producer<bool> autoFormatMarkdownValue() const { return _autoFormatMarkdown.value(); }
 	[[nodiscard]] rpl::producer<bool> addCommaAfterMentionValue() const { return _addCommaAfterMention.value(); }
+	[[nodiscard]] rpl::producer<bool> disableLinkPreviewValue() const { return _disableLinkPreview.value(); }
 	[[nodiscard]] rpl::producer<int> contextMenuShortcutButtonSizeValue() const { return _contextMenuShortcutButtonSize.value(); }
 	[[nodiscard]] rpl::producer<int> contextMenuShortcutIconSizeValue() const { return _contextMenuShortcutIconSize.value(); }
 	[[nodiscard]] rpl::producer<int> contextMenuShortcutSpacingValue() const { return _contextMenuShortcutSpacing.value(); }
@@ -184,6 +201,7 @@ public:
 	[[nodiscard]] rpl::producer<int> contextMenuShortcutCornerRadiusValue() const { return _contextMenuShortcutCornerRadius.value(); }
 	[[nodiscard]] rpl::producer<int> roundnessValue() const { return _roundness.value(); }
 	[[nodiscard]] rpl::producer<int> avatarShapeValue() const { return _avatarShape.value(); }
+	[[nodiscard]] rpl::producer<bool> avatarShapeOutlineValue() const { return _avatarShapeOutline.value(); }
 	[[nodiscard]] rpl::producer<int> translationProviderValue() const { return _translationProvider.value(); }
 
 	[[nodiscard]] rpl::producer<bool> debugLogsChanges() const { return _debugLogs.changes(); }
@@ -192,6 +210,7 @@ public:
 	[[nodiscard]] rpl::producer<bool> disableAiChanges() const { return _disableAi.changes(); }
 	[[nodiscard]] rpl::producer<bool> disableAnimatedAvatarsChanges() const { return _disableAnimatedAvatars.changes(); }
 	[[nodiscard]] rpl::producer<bool> disableAutoDownloadChanges() const { return _disableAutoDownload.changes(); }
+	[[nodiscard]] rpl::producer<bool> disableAutoUpdateChanges() const { return _disableAutoUpdate.changes(); }
 	[[nodiscard]] rpl::producer<bool> showStartTokenChanges() const { return _showStartToken.changes(); }
 	[[nodiscard]] rpl::producer<bool> showPeerIdChanges() const { return _showPeerId.changes(); }
 	[[nodiscard]] rpl::producer<bool> showDcIdChanges() const { return _showDcId.changes(); }
@@ -199,13 +218,16 @@ public:
 	[[nodiscard]] rpl::producer<bool> showRegistrationDateChanges() const { return _showRegistrationDate.changes(); }
 	[[nodiscard]] rpl::producer<bool> disableCustomChatBackgroundChanges() const { return _disableCustomChatBackground.changes(); }
 	[[nodiscard]] rpl::producer<bool> hideAllChatsFolderChanges() const { return _hideAllChatsFolder.changes(); }
+	[[nodiscard]] rpl::producer<bool> hideArchiveChatsChanges() const { return _hideArchiveChats.changes(); }
 	[[nodiscard]] rpl::producer<bool> hideStoriesChanges() const { return _hideStories.changes(); }
 	[[nodiscard]] rpl::producer<bool> hideOpenWebappButtonChatlistChanges() const { return _hideOpenWebappButtonChatlist.changes(); }
 	[[nodiscard]] rpl::producer<bool> localPremiumChanges() const { return _localPremium.changes(); }
 	[[nodiscard]] rpl::producer<bool> deleteForEveryoneChanges() const { return _deleteForEveryone.changes(); }
 	[[nodiscard]] rpl::producer<bool> lastSeenTimestampChanges() const { return _lastSeenTimestamp.changes(); }
 	[[nodiscard]] rpl::producer<bool> showForwardedDateInTitleChanges() const { return _showForwardedDateInTitle.changes(); }
+	[[nodiscard]] rpl::producer<bool> showForwardsCountChanges() const { return _showForwardsCount.changes(); }
 	[[nodiscard]] rpl::producer<bool> disableGreetingStickerChanges() const { return _disableGreetingSticker.changes(); }
+	[[nodiscard]] rpl::producer<bool> roundGroupChannelNumbersChanges() const { return _roundGroupChannelNumbers.changes(); }
 	[[nodiscard]] rpl::producer<bool> useDefaultRoundingChanges() const { return _useDefaultRounding.changes(); }
 	[[nodiscard]] rpl::producer<bool> showDiscussButtonChanges() const { return _showDiscussButton.changes(); }
 	[[nodiscard]] rpl::producer<bool> showFastshareInChatsChanges() const { return _showFastshareInChats.changes(); }
@@ -225,6 +247,7 @@ public:
 	[[nodiscard]] rpl::producer<bool> screenshotModeChanges() const { return _screenshotMode.changes(); }
 	[[nodiscard]] rpl::producer<bool> autoFormatMarkdownChanges() const { return _autoFormatMarkdown.changes(); }
 	[[nodiscard]] rpl::producer<bool> addCommaAfterMentionChanges() const { return _addCommaAfterMention.changes(); }
+	[[nodiscard]] rpl::producer<bool> disableLinkPreviewChanges() const { return _disableLinkPreview.changes(); }
 	[[nodiscard]] rpl::producer<int> contextMenuShortcutButtonSizeChanges() const { return _contextMenuShortcutButtonSize.changes(); }
 	[[nodiscard]] rpl::producer<int> contextMenuShortcutIconSizeChanges() const { return _contextMenuShortcutIconSize.changes(); }
 	[[nodiscard]] rpl::producer<int> contextMenuShortcutSpacingChanges() const { return _contextMenuShortcutSpacing.changes(); }
@@ -233,6 +256,7 @@ public:
 	[[nodiscard]] rpl::producer<int> contextMenuShortcutCornerRadiusChanges() const { return _contextMenuShortcutCornerRadius.changes(); }
 	[[nodiscard]] rpl::producer<int> roundnessChanges() const { return _roundness.changes(); }
 	[[nodiscard]] rpl::producer<int> avatarShapeChanges() const { return _avatarShape.changes(); }
+	[[nodiscard]] rpl::producer<bool> avatarShapeOutlineChanges() const { return _avatarShapeOutline.changes(); }
 	[[nodiscard]] rpl::producer<int> translationProviderChanges() const { return _translationProvider.changes(); }
 
 private:
@@ -247,6 +271,7 @@ private:
 	rpl::variable<bool> _disableAi = false;
 	rpl::variable<bool> _disableAnimatedAvatars = false;
 	rpl::variable<bool> _disableAutoDownload = false;
+	rpl::variable<bool> _disableAutoUpdate = false;
 	rpl::variable<bool> _showStartToken = true;
 	rpl::variable<bool> _showPeerId = true;
 	rpl::variable<bool> _showDcId = true;
@@ -254,13 +279,16 @@ private:
 	rpl::variable<bool> _showRegistrationDate = true;
 	rpl::variable<bool> _disableCustomChatBackground = false;
 	rpl::variable<bool> _hideAllChatsFolder = false;
+	rpl::variable<bool> _hideArchiveChats = false;
 	rpl::variable<bool> _hideStories = false;
 	rpl::variable<bool> _hideOpenWebappButtonChatlist = true;
 	rpl::variable<bool> _localPremium = false;
 	rpl::variable<bool> _deleteForEveryone = true;
 	rpl::variable<bool> _lastSeenTimestamp = true;
 	rpl::variable<bool> _showForwardedDateInTitle = false;
+	rpl::variable<bool> _showForwardsCount = true;
 	rpl::variable<bool> _disableGreetingSticker = false;
+	rpl::variable<bool> _roundGroupChannelNumbers = false;
 	rpl::variable<bool> _useDefaultRounding = true;
 	rpl::variable<bool> _showDiscussButton = true;
 	rpl::variable<bool> _showFastshareInChats = false;
@@ -280,6 +308,7 @@ private:
 	rpl::variable<bool> _screenshotMode = false;
 	rpl::variable<bool> _autoFormatMarkdown = false;
 	rpl::variable<bool> _addCommaAfterMention = true;
+	rpl::variable<bool> _disableLinkPreview = false;
 	rpl::variable<int> _contextMenuShortcutButtonSize = 40;
 	rpl::variable<int> _contextMenuShortcutIconSize = 24;
 	rpl::variable<int> _contextMenuShortcutSpacing = 10;
@@ -288,6 +317,7 @@ private:
 	rpl::variable<int> _contextMenuShortcutCornerRadius = 20;
 	rpl::variable<int> _roundness = 50;
 	rpl::variable<int> _avatarShape = 0;
+	rpl::variable<bool> _avatarShapeOutline = true;
 	rpl::variable<int> _translationProvider = static_cast<int>(TranslationProvider::Telegram);
 };
 

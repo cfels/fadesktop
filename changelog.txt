@@ -1,3 +1,49 @@
+2.5.5 beta (09.09.26)
+
+- Updated tdesktop to v7.2.7
+- Fixed OTA payload decompression
+
+2.5.4 beta (08.09.26)
+
+- Dynamic height & width calculation for MD3 cards and rows
+- Add back button bg styling in top bar components
+- Adjust About footer layout and text formatting
+- Round group and channel subscriber counts 
+
+2.5.3 beta (08.09.26)
+
+- Updated tdesktop to v7.2.5
+- Disable auto OTA updates
+- Beta channel OTA updates
+- Updated OTA manifest to v6
+- Fixed some UI bugs
+
+2.5.2 (03.09.26)
+
+- Updated tdesktop to v7.1.4
+- Reimplemented FAgram Badge
+- Avatar shapes outline stroke can be disabled now
+- Extended Avatar shapes support to almost everywhere
+- Option to disable link previews
+- Option to hide archived chats from all chat List
+- Chat members filter in groups
+- Fixed crashes
+
+2.5.1 (23.08.26)
+
+- Last.FM Now Playing integration
+- Status dot online only option
+- Wrap Last.fm network callbacks in crl::guard
+- Updated translations
+
+2.5.0 (23.08.26)
+
+- Updated tdesktop to v7.1.1
+- Redesigned MD3 UI
+- Rewritten context menu shortcuts feature
+- Show forward counts on channel posts
+- Fixed GoogleSansFlex font issues
+
 2.4.0 (16.08.26)
 
 - Material Design 3 UI

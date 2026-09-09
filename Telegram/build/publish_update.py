@@ -5,10 +5,12 @@ publish_update.py — Publish OTA update to fagramdesktop/ota repo.
 Usage:
     python publish_update.py --version 6005002 --platform win64 --file path/to/tx64upd6005002
     python publish_update.py --version 6005002 --platform win64 --file path/to/tx64upd6005002 --beta
+    python publish_update.py --version 6005002 --platform armac --file path/to/tarmacupd6005002
 
 This script:
   1. Copies the update binary (created by Packer) to the local ota repo.
-  2. Updates the current4 manifest JSON.
+  2. Updates BOTH the current6 manifest (the feed merged clients request) and
+     the current4 manifest (kept in sync so older clients have time to migrate).
   3. Commits and pushes to GitHub.
 
 Prerequisites:
@@ -26,13 +28,15 @@ import sys
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.normpath(os.path.join(SCRIPT_DIR, '..', '..'))
 UPDATES_REPO = os.path.normpath(os.path.join(REPO_ROOT, '..', 'ota'))
-MANIFEST_NAME = 'current4'
+MANIFEST_NAMES = ['current6', 'current4']
 
-PLATFORMS = ['win64', 'linux']
+PLATFORMS = ['win64', 'linux', 'mac', 'armac']
 
 UPDATE_FILE_PREFIX = {
     'win64': 'tx64upd',
     'linux': 'tlinuxupd',
+    'mac': 'tmacupd',
+    'armac': 'tarmacupd',
 }
 
 
@@ -63,20 +67,44 @@ def git_run(cwd, *args):
 
 
 def main():
+    version_file = os.path.join(REPO_ROOT, 'Telegram', 'build', 'version')
+    default_beta = False
+    default_version = None
+    if os.path.isfile(version_file):
+        with open(version_file, 'r') as f:
+            for line in f:
+                parts = line.strip().split()
+                if len(parts) >= 2:
+                    if parts[0] == 'BetaChannel':
+                        default_beta = (parts[1] == '1')
+                    elif parts[0] == 'AppVersion':
+                        try:
+                            default_version = int(parts[1])
+                        except ValueError:
+                            pass
+
     parser = argparse.ArgumentParser(description='Publish OTA update')
-    parser.add_argument('--version', required=True, type=int,
-                        help='Integer version (e.g. 6005002)')
+    parser.add_argument('--version', default=default_version, type=int,
+                        help=f'Integer version (default from version file: {default_version})')
     parser.add_argument('--platform', required=True, choices=PLATFORMS,
                         help='Target platform key')
     parser.add_argument('--file', required=True,
                         help='Path to the update file produced by Packer')
-    parser.add_argument('--beta', action='store_true',
+    parser.add_argument('--beta', dest='beta', action='store_true', default=default_beta,
                         help='Mark as beta channel update')
+    parser.add_argument('--stable', dest='beta', action='store_false',
+                        help='Mark as stable channel update')
+    parser.add_argument('--link', default=None,
+                        help='Custom download link (default: GitHub Releases link)')
     parser.add_argument('--updates-repo', default=UPDATES_REPO,
                         help='Path to local ota repo clone')
     parser.add_argument('--no-push', action='store_true',
                         help='Commit but do not push')
     args = parser.parse_args()
+
+    if args.version is None:
+        print('Error: --version must be specified or present in Telegram/build/version', file=sys.stderr)
+        sys.exit(1)
 
     updates_repo = os.path.normpath(args.updates_repo)
     if not os.path.isdir(os.path.join(updates_repo, '.git')):
@@ -102,24 +130,50 @@ def main():
     shutil.copy2(args.file, dest_file)
     print(f'Copied update file to: {dest_file}')
 
-    manifest_path = os.path.join(updates_repo, MANIFEST_NAME)
-    manifest = read_manifest(manifest_path)
-
     channel = 'beta' if args.beta else 'stable'
-    link = f'/{expected_name}'
+    if args.link:
+        link = args.link
+    else:
+        release_tag = f"ota-v{args.version}" + ("-beta" if channel == "beta" else "")
+        link = f"https://github.com/fagramdesktop/ota/releases/download/{release_tag}/{expected_name}"
+
+    # Read existing manifest (check current4 or current6)
+    manifest = {}
+    for name in ['current4', 'current6']:
+        p = os.path.join(updates_repo, name)
+        m = read_manifest(p)
+        if m:
+            manifest = m
+            break
 
     if args.platform not in manifest:
         manifest[args.platform] = {}
+
+    if channel in manifest[args.platform]:
+        existing_version = manifest[args.platform][channel].get('released')
+        if existing_version:
+            try:
+                if int(args.version) <= int(existing_version):
+                    print(
+                        f'Warning: Published version ({args.version}) is not greater than '
+                        f'existing version ({existing_version}) on {args.platform}/{channel}! '
+                        f'Clients will reject this update due to monotonic version checking.',
+                        file=sys.stderr,
+                    )
+            except ValueError:
+                pass
 
     manifest[args.platform][channel] = {
         'released': str(args.version),
         'link': link,
     }
 
-    write_manifest(manifest_path, manifest)
-    print(f'Updated manifest: {args.platform}/{channel} -> v{args.version}')
+    for manifest_name in MANIFEST_NAMES:
+        manifest_path = os.path.join(updates_repo, manifest_name)
+        write_manifest(manifest_path, manifest)
+        print(f'Updated manifest: {manifest_name}: {args.platform}/{channel} -> v{args.version}')
 
-    git_run(updates_repo, 'add', expected_name, MANIFEST_NAME)
+    git_run(updates_repo, 'add', expected_name, *MANIFEST_NAMES)
 
     version_str = format_version(args.version)
     channel_suffix = ' beta' if args.beta else ''

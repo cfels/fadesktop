@@ -47,6 +47,7 @@ public:
 			Silent         = 0x400,
 			EditedPrimary  = 0x800,
 			Ephemeral      = 0x1000,
+			Updated        = 0x2000,
 			//Unread, // We don't want to pass and update it in Date for now.
 		};
 		friend inline constexpr bool is_flag_type(Flag) { return true; };
@@ -97,6 +98,7 @@ private:
 	void layout();
 	void layoutDateText();
 	void layoutViewsText();
+	void layoutForwardsText();
 	void layoutRepliesText();
 	void layoutEffectText();
 
@@ -124,6 +126,7 @@ private:
 	Data _data;
 	Ui::Text::String _authorEditedDate;
 	Ui::Text::String _views;
+	Ui::Text::String _forwards;
 	Ui::Text::String _replies;
 	std::unique_ptr<Effect> _effect;
 	mutable ClickHandlerPtr _replayLink;
