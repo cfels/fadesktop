@@ -1,3 +1,16 @@
+2.5.7 (13.09.26)
+
+- Updated tdesktop to v7.2.8
+- Fixed OTA payload decompression
+- Dynamic height & width calculation for MD3 cards and rows
+- Add back button bg styling in top bar components
+- Adjust About footer layout and text formatting
+- Round group and channel subscriber counts 
+- Disable auto OTA updates
+- Beta channel OTA updates
+- Updated OTA manifest to v6
+- Fixed some UI bugs
+
 2.5.6 beta (13.09.26)
 
 - Updated tdesktop to v7.2.8
