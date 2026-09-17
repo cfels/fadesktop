@@ -28,6 +28,7 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 #include "ui/wrap/vertical_layout.h"
 #include "window/window_session_controller.h"
 #include "styles/style_boxes.h"
+#include "styles/style_layers.h"
 #include "styles/style_menu_icons.h"
 #include "styles/style_settings.h"
 
@@ -37,7 +38,7 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 namespace Settings {
 namespace {
 
-constexpr auto kDonationUrl = u"https://burhanverse.eu.org/?section=support"_q;
+const auto kDonationUrl = u"https://burhanverse.eu.org/?section=support"_q;
 
 void RenderSvgShape(
 		QPainter &p,
@@ -252,8 +253,8 @@ void FAAbout::setupFooter(not_null<Ui::VerticalLayout*> container) {
 			container,
 			rpl::single(u"Made with \u2764 by Burhanverse & Contributors"_q),
 			st::boxDividerLabel),
-		style::margins(16, 8, 16, 24));
-	label->setAlignment(Qt::AlignCenter);
+		style::margins(16, 8, 16, 24),
+		style::al_top);
 	label->setTextColorOverride(st::windowSubTextFg->c);
 }
 
