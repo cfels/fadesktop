@@ -186,7 +186,7 @@ void FAAbout::setupAbout(
 	const auto descLabel = inner->add(
 		object_ptr<Ui::FlatLabel>(
 			inner,
-			rpl::single(u"An unofficial desktop client based on Telegram Desktop with Material Design 3 enhancements."_q),
+			rpl::single(u"A feature rich unofficial desktop client based on Telegram Desktop with Material Design 3."_q),
 			st::boxDividerLabel));
 	descLabel->setTextColorOverride(st::windowSubTextFg->c);
 
