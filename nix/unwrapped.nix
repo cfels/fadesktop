@@ -28,6 +28,7 @@
   ada,
   tdlib,
   tg_owt,
+  pango
 }:
 
 stdenv.mkDerivation (finalAttrs: {
