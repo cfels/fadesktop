@@ -3269,8 +3269,10 @@ void MainWidget::handleStartFiles(
 				sendList.push_back(path);
 			}
 		}
-		for (const auto &themePath : themePaths) {
-			Window::Theme::Apply(themePath);
+		if (!themePaths.isEmpty()
+			&& !Window::Theme::Apply(themePaths.front())) {
+			_controller->show(Ui::MakeInformBox(
+				tr::lng_theme_preview_invalid(tr::now)));
 		}
 		if (sendList.isEmpty()) {
 			return;

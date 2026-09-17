@@ -763,7 +763,10 @@ void ChooseThemeFromFile(
 			&& !hasExtension(qstr(".tdesktop-palette"))) {
 			return;
 		}
-		Window::Theme::Apply(filePath);
+		if (!Window::Theme::Apply(filePath)) {
+			controller->show(Ui::MakeInformBox(
+				tr::lng_theme_preview_invalid(tr::now)));
+		}
 	});
 	FileDialog::GetOpenPath(
 		parent.get(),
@@ -1398,6 +1401,10 @@ void Chat::fillTopBarMenu(const Ui::Menu::MenuCallback &addAction) {
 	createTheme->setProperty(
 		"highlight-control-id",
 		u"chat/themes-create"_q);
+	addAction(
+		tr::lng_settings_load_theme_from_file(tr::now),
+		[=] { ChooseThemeFromFile(controller(), controller()->window().widget()); },
+		&st::menuIconPalette);
 }
 
 void Chat::setupContent() {
@@ -2763,15 +2770,6 @@ void SetupCloudThemes(
 		const auto userId = controller->session().userId();
 		return (Background()->themeObject().cloud.createdBy == userId);
 	}));
-
-	AddButtonWithIcon(
-		inner,
-		tr::lng_settings_load_theme_from_file(),
-		st::settingsButton,
-		{ &st::menuIconPalette }
-	)->addClickHandler([=] {
-		ChooseThemeFromFile(controller, inner);
-	});
 
 	Ui::AddSkip(inner, 2 * st::defaultVerticalListSkip);
 

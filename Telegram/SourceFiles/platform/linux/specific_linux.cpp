@@ -470,6 +470,18 @@ void InstallMimeTypes() {
 		+ u"/mime/packages/"_q
 		+ QGuiApplication::desktopFileName()
 		+ u".xml"_q;
+	QFile source(u":/misc/org.fagram.mime.xml"_q);
+	const auto contents = source.open(QIODevice::ReadOnly)
+		? source.readAll()
+		: QByteArray();
+	if (contents.isEmpty()) {
+		return;
+	}
+	QFile current(targetFile);
+	if (current.open(QIODevice::ReadOnly)
+		&& current.readAll() == contents) {
+		return;
+	}
 	QDir().mkpath(QFileInfo(targetFile).path());
 	QFile::remove(targetFile);
 	if (QFile::copy(u":/misc/org.fagram.mime.xml"_q, targetFile)) {
