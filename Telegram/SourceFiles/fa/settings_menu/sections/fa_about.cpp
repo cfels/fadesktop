@@ -62,9 +62,9 @@ void RenderFagramLogo(
 		QPainter &p,
 		const QRectF &rect,
 		const QColor &accent,
-		const QColor &bg) {
+		const QColor &bg,
+		const QColor &cardBg) {
 	const auto isDark = (bg.lightness() < 128);
-	const auto cardBg = anim::color(accent, bg, 0.85);
 	const auto accentSoft = isDark
 		? cardBg
 		: anim::color(accent, QColor(255, 255, 255), 0.45);
@@ -109,9 +109,12 @@ protected:
 		const auto cx = width() / 2.0;
 		const auto cy = height() / 2.0;
 
-		const auto accent = st::windowActiveTextFg->c;
 		const auto bg = st::windowBg->c;
 		const auto isDark = (bg.lightness() < 128);
+		const auto accent = isDark
+			? st::windowActiveTextFg->c
+			: st::windowBgActive->c;
+		const auto cardBg = st::settingsThemeNotSupportedBg->c;
 
 		constexpr auto outerSize = 176.0;
 		const auto outerRect = QRectF(
@@ -119,10 +122,7 @@ protected:
 			cy - outerSize / 2.0,
 			outerSize,
 			outerSize);
-		const auto outerColor = isDark
-			? anim::color(accent, bg, 0.85)
-			: anim::color(accent, bg, 0.78);
-		RenderSvgShape(p, fa::svg::material_shape2, outerRect, outerColor);
+		RenderSvgShape(p, fa::svg::material_shape2, outerRect, cardBg);
 
 		constexpr auto logoSize = 128.0;
 		const auto logoRect = QRectF(
@@ -130,9 +130,123 @@ protected:
 			cy - logoSize / 2.0,
 			logoSize,
 			logoSize);
-		RenderFagramLogo(p, logoRect, accent, bg);
+		RenderFagramLogo(p, logoRect, accent, bg, cardBg);
 	}
 };
+
+class AboutCardWidget final : public Ui::RpWidget {
+public:
+	explicit AboutCardWidget(QWidget *parent);
+
+	int resizeGetHeight(int newWidth) override;
+
+protected:
+	void paintEvent(QPaintEvent *e) override;
+	void resizeEvent(QResizeEvent *e) override;
+
+private:
+	static constexpr auto kPaddingLeft = 18;
+	static constexpr auto kPaddingRight = 18;
+	static constexpr auto kPaddingTop = 16;
+	static constexpr auto kPaddingBottom = 18;
+	static constexpr auto kSpacingTitle = 4;
+	static constexpr auto kSpacingVersion = 8;
+
+	void updatePositions(int w);
+
+	object_ptr<Ui::FlatLabel> _appTitle;
+	object_ptr<Ui::FlatLabel> _versionLabel;
+	object_ptr<Ui::FlatLabel> _descLabel;
+};
+
+AboutCardWidget::AboutCardWidget(QWidget *parent)
+: RpWidget(parent)
+, _appTitle(
+	this,
+	rpl::single(u"FAgram Desktop"_q),
+	st::boxTitle)
+, _versionLabel(
+	this,
+	rpl::single(u"Version %1"_q.arg(currentVersionText())),
+	st::boxDividerLabel)
+, _descLabel(
+	this,
+	rpl::single(u"A feature rich unofficial desktop client based on Telegram Desktop with Material Design 3."_q),
+	st::boxDividerLabel) {
+	_appTitle->setTextColorOverride(st::windowFg->c);
+	_versionLabel->setTextColorOverride(st::windowSubTextFg->c);
+	_descLabel->setTextColorOverride(st::windowSubTextFg->c);
+
+	_versionLabel->setClickHandlerFilter([=](const auto &...) {
+		File::OpenUrl(Core::App().changelogLink());
+		return true;
+	});
+
+	rpl::combine(
+		_appTitle->heightValue(),
+		_versionLabel->heightValue(),
+		_descLabel->heightValue()
+	) | rpl::on_next([=] {
+		const auto w = width();
+		if (w > 0) {
+			const auto h = resizeGetHeight(w);
+			if (height() != h) {
+				resize(w, h);
+			}
+		}
+	}, lifetime());
+}
+
+int AboutCardWidget::resizeGetHeight(int newWidth) {
+	if (newWidth <= 0) {
+		return height();
+	}
+	const auto contentWidth = std::max(1, newWidth - kPaddingLeft - kPaddingRight);
+	_appTitle->resizeToWidth(contentWidth);
+	_versionLabel->resizeToWidth(contentWidth);
+	_descLabel->resizeToWidth(contentWidth);
+
+	return kPaddingTop
+		+ _appTitle->height()
+		+ kSpacingTitle
+		+ _versionLabel->height()
+		+ kSpacingVersion
+		+ _descLabel->height()
+		+ kPaddingBottom;
+}
+
+void AboutCardWidget::resizeEvent(QResizeEvent *e) {
+	RpWidget::resizeEvent(e);
+	updatePositions(width());
+}
+
+void AboutCardWidget::updatePositions(int w) {
+	if (w <= 0) {
+		return;
+	}
+	const auto contentWidth = std::max(1, w - kPaddingLeft - kPaddingRight);
+	_appTitle->resizeToWidth(contentWidth);
+	_versionLabel->resizeToWidth(contentWidth);
+	_descLabel->resizeToWidth(contentWidth);
+
+	auto y = kPaddingTop;
+	_appTitle->moveToLeft(kPaddingLeft, y, w);
+	y += _appTitle->height() + kSpacingTitle;
+
+	_versionLabel->moveToLeft(kPaddingLeft, y, w);
+	y += _versionLabel->height() + kSpacingVersion;
+
+	_descLabel->moveToLeft(kPaddingLeft, y, w);
+}
+
+void AboutCardWidget::paintEvent(QPaintEvent *e) {
+	Painter p(this);
+	PainterHighQualityEnabler hq(p);
+	p.setPen(Qt::NoPen);
+	p.setBrush(st::settingsThemeNotSupportedBg);
+	const auto r = QRectF(0.5, 0.5, width() - 1.0, height() - 1.0);
+	p.drawPath(FA::Ui::MakeSegmentPath(r, FA::Ui::CardSegmentPosition::Single, 24.0, 4.0));
+}
 
 } // namespace
 
@@ -158,38 +272,9 @@ void FAAbout::setupAbout(
 		not_null<Window::SessionController*> controller) {
 	FA::Ui::AddModernSectionHeader(container, tr::lng_menu_about());
 
-	const auto card = FA::Ui::CreateCardContainer(container, 0, 8);
-
-	const auto inner = card->add(
-		object_ptr<Ui::VerticalLayout>(card),
-		style::margins(18, 16, 18, 16));
-
-	const auto appTitle = inner->add(
-		object_ptr<Ui::FlatLabel>(
-			inner,
-			rpl::single(u"FAgram Desktop"_q),
-			st::boxTitle),
-		style::margins(0, 0, 0, 4));
-	appTitle->setTextColorOverride(st::windowFg->c);
-
-	const auto versionLabel = inner->add(
-		object_ptr<Ui::FlatLabel>(
-			inner,
-			rpl::single(u"Version %1"_q.arg(currentVersionText())),
-			st::boxDividerLabel),
-		style::margins(0, 0, 0, 8));
-	versionLabel->setTextColorOverride(st::windowSubTextFg->c);
-	versionLabel->setClickHandlerFilter([=](const auto &...) {
-		File::OpenUrl(Core::App().changelogLink());
-		return true;
-	});
-
-	const auto descLabel = inner->add(
-		object_ptr<Ui::FlatLabel>(
-			inner,
-			rpl::single(u"A feature rich unofficial desktop client based on Telegram Desktop with Material Design 3."_q),
-			st::boxDividerLabel));
-	descLabel->setTextColorOverride(st::windowSubTextFg->c);
+	container->add(
+		object_ptr<AboutCardWidget>(container),
+		style::margins(16, 0, 16, 8));
 
 	const auto donateCard = FA::Ui::CreateCardContainer(container, 0, 8);
 	FA::Ui::AddCardButton(
