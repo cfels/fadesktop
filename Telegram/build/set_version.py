@@ -19,36 +19,33 @@ if sys.platform == 'win32' and not 'COMSPEC' in os.environ:
 executePath = os.getcwd()
 scriptPath = os.path.dirname(os.path.realpath(__file__))
 
-argsJoined = ' '.join(sys.argv[1:]).strip()
-
 inputVersion = ''
 versionOriginal = ''
 versionMajor = ''
 versionMinor = ''
-versionPatch = '0'
+versionPatch = ''
 versionAlpha = '0'
 versionBeta = False
-versionBetaNum = 0
-
-pattern = r'^\s*(\d+)\.(\d+)(?:\.(\d+))?(?:(?:\.|\s+|-)?(?:-)?beta(?:(?:\.|\s+)?(\d+))?|\.(\d+))?\s*$'
-match = re.match(pattern, argsJoined, re.IGNORECASE)
-if match:
-  inputVersion = argsJoined
-  versionMajor = match.group(1)
-  versionMinor = match.group(2)
-  versionPatch = match.group(3) if match.group(3) else '0'
-  rawBetaNum = match.group(4)
-  rawAlpha = match.group(5)
-
-  if 'beta' in argsJoined.lower():
+for arg in sys.argv[1:]:
+  if arg.lower() in ('-beta', '--beta', 'beta'):
     versionBeta = True
-    versionBetaNum = int(rawBetaNum) if rawBetaNum else 1
-    versionOriginal = f"{versionMajor}.{versionMinor}.{versionPatch}.beta"
-  elif rawAlpha:
-    versionAlpha = rawAlpha
-    versionOriginal = f"{versionMajor}.{versionMinor}.{versionPatch}.{versionAlpha}"
-  else:
-    versionOriginal = f"{versionMajor}.{versionMinor}.{versionPatch}"
+    continue
+  match = re.match(r'^\s*(\d+)\.(\d+)(\.(\d+)(\.(\d+|beta))?)?\s*$', arg)
+  if match:
+    inputVersion = arg
+    versionOriginal = inputVersion
+    versionMajor = match.group(1)
+    versionMinor = match.group(2)
+    versionPatch = match.group(4) if match.group(4) else '0'
+    versionAlphaBeta = match.group(5) if match.group(5) else ''
+    if len(versionAlphaBeta) > 0:
+      if match.group(6) == 'beta':
+        versionBeta = True
+      else:
+        versionAlpha = match.group(6)
+
+if versionBeta and 'beta' not in versionOriginal:
+  versionOriginal = versionOriginal + '.beta'
 
 if not len(versionMajor):
   print("Wrong version parameter")
@@ -64,8 +61,6 @@ checkVersionPart(versionMajor)
 checkVersionPart(versionMinor)
 checkVersionPart(versionPatch)
 checkVersionPart(versionAlpha)
-if versionBeta:
-  checkVersionPart(str(versionBetaNum))
 
 versionFull = str(int(versionMajor) * 1000000 + int(versionMinor) * 1000 + int(versionPatch))
 versionFullAlpha = '0'
@@ -76,37 +71,27 @@ versionStr = versionMajor + '.' + versionMinor + '.' + versionPatch
 versionStrSmall = versionStr if versionPatch != '0' else versionMajor + '.' + versionMinor
 
 if versionBeta:
-  print(f'Setting version: {versionStr} beta {versionBetaNum}')
+  print('Setting version: ' + versionStr + ' beta')
 elif versionAlpha != '0':
   print('Setting version: ' + versionStr + '.' + versionAlpha + ' closed alpha')
 else:
   print('Setting version: ' + versionStr + ' stable')
 
+#def replaceInFile(path, replaces):
+
 def checkChangelog():
-  global scriptPath, versionStr, versionStrSmall, versionBeta, versionBetaNum
+  global scriptPath, versionStr, versionStrSmall
 
   count = 0
   with io.open(scriptPath + '/../../changelog.txt', encoding='utf-8') as f:
     for line in f:
-      line = line.strip()
-      if versionBeta:
-        prefixes = [
-          f"{versionStr} beta {versionBetaNum} ",
-          f"{versionStrSmall} beta {versionBetaNum} ",
-          f"{versionStr}.beta {versionBetaNum} ",
-          f"{versionStrSmall}.beta {versionBetaNum} ",
-        ]
-        if any(line.startswith(p) for p in prefixes):
-          count += 1
-      else:
-        if (line.startswith(versionStr + ' ') or line.startswith(versionStrSmall + ' ')) and ' beta' not in line:
-          count += 1
+      if line.startswith(versionStr + ' ') or line.startswith(versionStrSmall + ' '):
+        count = count + 1
   if count == 0:
-    target = f"{versionStr} beta {versionBetaNum}" if versionBeta else versionStr
-    print(f"Changelog entry for '{target}' not found!")
+    print('Changelog entry not found!')
     finish(1)
   elif count != 1:
-    print(f"Wrong changelog entries count found: {count}")
+    print('Wrong changelog entries count found: ' + count)
     finish(1)
 
 checkChangelog()
@@ -115,7 +100,7 @@ def replaceInFile(path, replacements):
   content = ''
   foundReplacements = {}
   updated = False
-  with open(path, 'r', encoding='utf-8') as f:
+  with open(path, 'r') as f:
     for line in f:
       for replacement in replacements:
         if re.search(replacement[0], line):
@@ -130,7 +115,7 @@ def replaceInFile(path, replacements):
       print('Could not find "' + replacement[0] + '" in "' + path + '".')
       finish(1)
   if updated:
-    with open(path, 'w', encoding='utf-8') as f:
+    with open(path, 'w') as f:
       f.write(content)
 
 print('Patching build/version...')
@@ -140,9 +125,8 @@ replaceInFile(scriptPath + '/version', [
   [ r'(AppVersionStrSmall\s+)\d[\d\.]*', r'\g<1>' + versionStrSmall ],
   [ r'(AppVersionStr\s+)\d[\d\.]*', r'\g<1>' + versionStr ],
   [ r'(BetaChannel\s+)\d', r'\g<1>' + ('1' if versionBeta else '0') ],
-  [ r'(BetaNumber\s+)\d+', r'\g<1>' + str(versionBetaNum if versionBeta else 0) ],
   [ r'(AlphaVersion\s+)\d+', r'\g<1>' + versionFullAlpha ],
-  [ r'(AppVersionOriginal\s+).+', r'\g<1>' + versionOriginal ],
+  [ r'(AppVersionOriginal\s+)\d[\d\.beta]*', r'\g<1>' + versionOriginal ],
 ])
 
 print('Patching core/version.h...')
@@ -151,7 +135,6 @@ replaceInFile(scriptPath + '/../SourceFiles/core/version.h', [
   [ r'(AppVersion\s+=\s+)\d+', r'\g<1>' + versionFull ],
   [ r'(AppVersionStr\s+=\s+)[^;]+', r'\g<1>"' + versionStrSmall + '"' ],
   [ r'(AppBetaVersion\s+=\s+)[a-z]+', r'\g<1>' + ('true' if versionBeta else 'false') ],
-  [ r'(AppBetaNumber\s+=\s+)\d+', r'\g<1>' + str(versionBetaNum if versionBeta else 0) ],
 ])
 
 print('Patching fa/fa_version.h...')
@@ -159,11 +142,9 @@ replaceInFile(scriptPath + '/../SourceFiles/fa/fa_version.h', [
   [ r'(AppFAVersion\s+=\s+)\d+', r'\g<1>' + versionFull ],
   [ r'(AppFAVersionStr\s+=\s+)[^;]+', r'\g<1>"' + versionStrSmall + '"' ],
   [ r'(AppFABetaVersion\s+=\s+)[a-z]+', r'\g<1>' + ('true' if versionBeta else 'false') ],
-  [ r'(AppFABetaNumber\s+=\s+)\d+', r'\g<1>' + str(versionBetaNum if versionBeta else 0) ],
 ])
 
-buildPart = str(versionBetaNum) if versionBeta else versionAlpha
-parts = [versionMajor, versionMinor, versionPatch, buildPart]
+parts = [versionMajor, versionMinor, versionPatch, versionAlpha]
 withcomma = ','.join(parts)
 withdot = '.'.join(parts)
 rcReplaces = [

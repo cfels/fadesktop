@@ -6,7 +6,7 @@ from xml.etree import ElementTree as ET
 import argparse
 
 def parse_changelog(changelog_path):
-    version_re = re.compile(r'^([\d.-]+?)(?:\.(beta))?(?:\s+(beta(?:\s+\d+)?|\w+))?\s*\((\d{2}\.\d{2}\.\d{2})\)')
+    version_re = re.compile(r'([\d.-]+)\s+(\w+)?\s*\((\d{2}.\d{2}\.\d{2})\)')
     entry_re = re.compile(r'-\s(.*)')
 
     with open(changelog_path, "r", encoding="utf-8") as f:
@@ -17,15 +17,14 @@ def parse_changelog(changelog_path):
         version_match = version_re.match(l)
         entry_match = entry_re.match(l)
         if version_match is not None:
-            version, dot_beta, prerelease, date = version_match.groups()
-            full_prerelease = prerelease or dot_beta
+            version, prerelease, date = version_match.groups()
             release = (version,
-                       full_prerelease,
+                       prerelease,
                        datetime.datetime.strptime(date, '%d.%m.%y').date(),
                        [])
             releases.append(release)
-        elif entry_match is not None and len(releases) > 0:
-            releases[-1][3].append(entry_match.group(1))
+        elif entry_match is not None:
+            release[3].append(entry_match.group(1))
 
     return releases
 
@@ -34,8 +33,7 @@ def get_release_xml(version, prerelease, date, changes):
     if prerelease is None:
         ver_str = version
     else:
-        ver_slug = prerelease.replace(' ', '.')
-        ver_str = f"{version}~{ver_slug}"
+        ver_str = f"{version}~{prerelease}"
     release.set("version", ver_str)
     release.set("date", date.isoformat())
     description = ET.SubElement(release, "description")

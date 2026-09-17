@@ -167,13 +167,7 @@ namespace {
 	} else if (cAlphaVersion()) {
 		result += u" alpha %1"_q.arg(cAlphaVersion() % 1000);
 	} else if (AppBetaVersion || AppFABetaVersion) {
-		if constexpr (AppFABetaNumber > 0) {
-			result += u" beta %1"_q.arg(AppFABetaNumber);
-		} else if constexpr (AppBetaNumber > 0) {
-			result += u" beta %1"_q.arg(AppBetaNumber);
-		} else {
-			result += " beta";
-		}
+		result += " beta";
 	}
 	if (Platform::IsWindows64Bit()) {
 		result += " x64";

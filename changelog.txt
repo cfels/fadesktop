@@ -1,11 +1,7 @@
-2.5.8 beta 2 (17.09.26)
+2.5.8 beta (17.09.26)
 
-- Some UI fixes
-
-2.5.8 beta 1 (17.09.26)
-
-- New versioning scheme
 - New FAgram About page
+- Some UI fixes
 
 2.5.7 (13.09.26)
 

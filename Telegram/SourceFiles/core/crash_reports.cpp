@@ -327,8 +327,8 @@ void StartCatching() {
 	ProcessAnnotations["Version"] = (cAlphaVersion()
 		? u"%1 alpha"_q.arg(cAlphaVersion())
 		: (AppBetaVersion
-			? (AppBetaNumber > 0 ? u"%1 beta %2"_q.arg(AppVersion).arg(AppBetaNumber) : u"%1 beta"_q.arg(AppVersion))
-			: u"%1"_q.arg(AppVersion))).toUtf8().constData();
+			? u"%1 beta"_q
+			: u"%1"_q).arg(AppVersion)).toUtf8().constData();
 	ProcessAnnotations["Launched"] = QDateTime::currentDateTime().toString("dd.MM.yyyy hh:mm:ss").toUtf8().constData();
 	ProcessAnnotations["Platform"] = PlatformString().toUtf8().constData();
 	ProcessAnnotations["UserTag"] = QString::number(Core::Launcher::Instance().installationTag(), 16).toUtf8().constData();

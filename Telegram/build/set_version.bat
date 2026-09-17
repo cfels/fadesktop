@@ -2,7 +2,7 @@
 
 set "FullScriptPath=%~dp0"
 
-python %FullScriptPath%set_version.py %*
+python %FullScriptPath%set_version.py %1
 if %errorlevel% neq 0 goto error
 
 exit /b

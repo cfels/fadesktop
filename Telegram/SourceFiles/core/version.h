@@ -25,5 +25,4 @@ constexpr auto AppFile = "FAgram"_cs;
 constexpr auto AppVersion = 2005008;
 constexpr auto AppVersionStr = "2.5.8";
 constexpr auto AppBetaVersion = true;
-constexpr auto AppBetaNumber = 2;
 constexpr auto AppAlphaVersion = TDESKTOP_ALPHA_VERSION;
