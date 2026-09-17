@@ -171,7 +171,7 @@ AboutCardWidget::AboutCardWidget(QWidget *parent)
 	st::boxDividerLabel)
 , _descLabel(
 	this,
-	rpl::single(u"A feature rich unofficial desktop client based on Telegram Desktop with Material Design 3."_q),
+	rpl::single(u"A feature rich Telegram client based on Telegram Desktop with Material Design 3."_q),
 	st::boxDividerLabel) {
 	_appTitle->setTextColorOverride(st::windowFg->c);
 	_versionLabel->setTextColorOverride(st::windowSubTextFg->c);
