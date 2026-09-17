@@ -281,7 +281,7 @@ void FAAbout::setupAbout(
 		donateCard,
 		rpl::single(u"Donate"_q),
 		[=] { UrlClickHandler::Open(kDonationUrl); },
-		nullptr,
+		&st::menuIconGiftPremium,
 		nullptr,
 		false);
 }
