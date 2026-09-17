@@ -28,7 +28,8 @@
   ada,
   tdlib,
   tg_owt,
-  pango
+  pango,
+  tlottie
 }:
 
 stdenv.mkDerivation (finalAttrs: {
@@ -74,6 +75,7 @@ stdenv.mkDerivation (finalAttrs: {
     qtwayland
     kcoreaddons
     hunspell
+    tlottie
   ];
 
   dontWrapQtApps = true;
