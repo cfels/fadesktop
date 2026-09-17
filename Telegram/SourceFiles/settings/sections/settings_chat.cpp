@@ -744,6 +744,34 @@ void ChooseFromFile(
 		crl::guard(parent, callback));
 }
 
+void ChooseThemeFromFile(
+		not_null<Window::SessionController*> controller,
+		not_null<QWidget*> parent) {
+	auto filters = QStringList(
+		u"Theme files (*.tdesktop-theme *.tdesktop-palette)"_q);
+	filters.push_back(FileDialog::AllFilesFilter());
+	const auto callback = crl::guard(controller, [=](
+			const FileDialog::OpenResult &result) {
+		if (result.paths.isEmpty()) {
+			return;
+		}
+		const auto filePath = result.paths.front();
+		const auto hasExtension = [&](QLatin1String extension) {
+			return filePath.endsWith(extension, Qt::CaseInsensitive);
+		};
+		if (!hasExtension(qstr(".tdesktop-theme"))
+			&& !hasExtension(qstr(".tdesktop-palette"))) {
+			return;
+		}
+		Window::Theme::Apply(filePath);
+	});
+	FileDialog::GetOpenPath(
+		parent.get(),
+		tr::lng_settings_load_theme_from_file(tr::now),
+		filters.join(u";;"_q),
+		crl::guard(parent, callback));
+}
+
 void SetupSupportSwitchSettings(
 		not_null<Window::SessionController*> controller,
 		not_null<Ui::VerticalLayout*> container) {
@@ -2735,6 +2763,15 @@ void SetupCloudThemes(
 		const auto userId = controller->session().userId();
 		return (Background()->themeObject().cloud.createdBy == userId);
 	}));
+
+	AddButtonWithIcon(
+		inner,
+		tr::lng_settings_load_theme_from_file(),
+		st::settingsButton,
+		{ &st::menuIconPalette }
+	)->addClickHandler([=] {
+		ChooseThemeFromFile(controller, inner);
+	});
 
 	Ui::AddSkip(inner, 2 * st::defaultVerticalListSkip);
 

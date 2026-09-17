@@ -464,6 +464,23 @@ bool GenerateServiceFile(bool silent = false) {
 	return true;
 }
 
+void InstallMimeTypes() {
+	const auto targetFile = QStandardPaths::writableLocation(
+		QStandardPaths::GenericDataLocation)
+		+ u"/mime/packages/"_q
+		+ QGuiApplication::desktopFileName()
+		+ u".xml"_q;
+	QDir().mkpath(QFileInfo(targetFile).path());
+	QFile::remove(targetFile);
+	if (QFile::copy(u":/misc/org.fagram.mime.xml"_q, targetFile)) {
+		DEBUG_LOG(("App Info: Mime definition installed."));
+	}
+
+	const auto mimePath = QStandardPaths::writableLocation(
+		QStandardPaths::GenericDataLocation) + u"/mime"_q;
+	QProcess::execute("update-mime-database", { mimePath });
+}
+
 void InstallLauncher() {
 	if (KSandbox::isInside()) {
 		return;
@@ -529,6 +546,7 @@ void InstallLauncher() {
 
 	GenerateDesktopFile(applicationsPath);
 	GenerateServiceFile();
+	InstallMimeTypes();
 
 	const auto icons = QStandardPaths::writableLocation(
 		QStandardPaths::GenericDataLocation) + u"/icons/"_q;
