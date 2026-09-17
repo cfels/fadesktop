@@ -1,3 +1,8 @@
+2.5.8 beta 1 (17.09.26)
+
+- New versioning scheme
+- New FAgram About page
+
 2.5.7 (13.09.26)
 
 - Updated tdesktop to v7.2.8
