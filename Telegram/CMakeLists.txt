@@ -961,6 +961,8 @@ PRIVATE
     fa/settings_menu/sections/fa_appearance.h
     fa/settings_menu/sections/fa_logs.cpp
     fa/settings_menu/sections/fa_logs.h
+    fa/settings_menu/sections/fa_about.cpp
+    fa/settings_menu/sections/fa_about.h
     fa/settings_menu/sections/fa_lastfm.cpp
     fa/settings_menu/sections/fa_lastfm.h
     fa/lastfm/fa_lastfm_config.h

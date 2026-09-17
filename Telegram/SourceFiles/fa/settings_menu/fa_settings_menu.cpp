@@ -17,6 +17,7 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 #include "fa/settings_menu/sections/fa_appearance.h"
 #include "fa/settings_menu/sections/fa_logs.h"
 #include "fa/settings_menu/sections/fa_lastfm.h"
+#include "fa/settings_menu/sections/fa_about.h"
 #include "fa/ui/md3/fa_cards.h"
 
 #include "fa_lang_auto.h"
@@ -187,51 +188,12 @@ namespace Settings {
 			fatr::fa_debug_logs(),
 			FALogs::Id(),
 			&st::menuIconFile,
+			false);
+    	addSection(
+			tr::lng_menu_about(),
+			FAAbout::Id(),
+			&st::menuIconInfo,
 			true);
-    }
-
-	void FA::SetupLinks(not_null<Ui::VerticalLayout *> container, not_null<Window::SessionController *> controller)
-    {
-    	::FA::Ui::AddModernSectionHeader(container, fatr::fa_links());
-		const auto card = ::FA::Ui::CreateCardContainer(container);
-
-	    ::FA::Ui::AddCardButton(
-			card,
-			fatr::fa_channel(),
-			[=] { Core::App().openLocalUrl("tg://resolve?domain=FAgramDesktop", {}); },
-			&st::menuIconChannel,
-			rpl::single(u"@FAgramDesktop"_q),
-			false);
-
-		::FA::Ui::AddCardDivider(card);
-
-    	::FA::Ui::AddCardButton(
-			card,
-			fatr::fa_group(),
-			[=] { Core::App().openLocalUrl("tg://resolve?domain=FAgramChat", {}); },
-			&st::menuIconGroups,
-			rpl::single(u"@FAgramChat"_q),
-			false);
-
-		::FA::Ui::AddCardDivider(card);
-
-    	::FA::Ui::AddCardButton(
-			card,
-			fatr::fa_translation(),
-			[=] { UrlClickHandler::Open("https://hosted.weblate.org/projects/fagramdesktop/"); },
-			&st::menuIconTranslate,
-			rpl::single(u"Weblate"_q),
-			false);
-
-		::FA::Ui::AddCardDivider(card);
-
-    	::FA::Ui::AddCardButton(
-			card,
-			fatr::fa_source_code(),
-			[=] { UrlClickHandler::Open("https://github.com/fagramdesktop/fadesktop"); },
-			&st::menuIconLink,
-			rpl::single(u"GitHub"_q),
-			false);
     }
 
     void FA::SetupDown(not_null<Ui::VerticalLayout *> container, not_null<Window::SessionController *> controller) {

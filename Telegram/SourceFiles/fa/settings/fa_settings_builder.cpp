@@ -14,6 +14,7 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 #include "fa/settings_menu/sections/fa_context_menu.h"
 #include "fa/settings_menu/sections/fa_appearance.h"
 #include "fa/settings_menu/sections/fa_logs.h"
+#include "fa/settings_menu/sections/fa_about.h"
 #include "fa/deep_links/fa_deep_links.h"
 
 #include "fa_lang_auto.h"
@@ -603,6 +604,24 @@ const auto kFALogsMeta = BuildHelper({
 			.title = fatr::fa_debug_logs(fatr::now),
 			.keywords = { u"debug"_q, u"logs"_q, u"enable"_q, u"logging"_q },
 			.icon = { &st::menuIconFile },
+		};
+	});
+});
+
+// FA About
+const auto kFAAboutMeta = BuildHelper({
+	.id = FAAbout::Id(),
+	.parentId = FA::Id(),
+	.title = &tr::lng_menu_settings,
+	.icon = &st::menuIconInfo,
+	.customTitle = [] { return tr::lng_menu_about(tr::now); },
+}, [](SectionBuilder &builder) {
+	builder.add(nullptr, [] {
+		return SearchEntry{
+			.id = u"fa/about"_q,
+			.title = tr::lng_menu_about(tr::now),
+			.keywords = { u"about"_q, u"fagram"_q, u"version"_q, u"donate"_q, u"links"_q },
+			.icon = { &st::menuIconInfo },
 		};
 	});
 });

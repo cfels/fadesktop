@@ -15,6 +15,7 @@ https://github.com/fagramdesktop/fadesktop/blob/dev/LEGAL
 #include "fa/settings_menu/sections/fa_chats.h"
 #include "fa/settings_menu/sections/fa_context_menu.h"
 #include "fa/settings_menu/sections/fa_logs.h"
+#include "fa/settings_menu/sections/fa_about.h"
 #include "window/window_session_controller.h"
 
 namespace Core::DeepLinks {
@@ -32,6 +33,7 @@ struct FASectionMapping {
 		{ u"chats"_q, Settings::FAChats::Id() },
 		{ u"context-menu"_q, Settings::FAContextMenu::Id() },
 		{ u"logs"_q, Settings::FALogs::Id() },
+		{ u"about"_q, Settings::FAAbout::Id() },
 	};
 	return result;
 }
