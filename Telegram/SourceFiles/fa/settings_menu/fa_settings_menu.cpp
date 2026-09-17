@@ -219,7 +219,6 @@ namespace Settings {
         const auto content = Ui::CreateChild<Ui::VerticalLayout>(this);
 
         SetupFASettings(content, controller);
-    	SetupLinks(content, controller);
     	SetupDown(content, controller);
         Ui::ResizeFitChild(this, content);
     }
