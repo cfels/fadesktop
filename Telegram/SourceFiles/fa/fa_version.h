@@ -12,3 +12,4 @@ constexpr auto AppFAVersion = 2005007;
 constexpr auto AppFAVersionStr = "2.5.7";
 constexpr auto AppTGDVersion = "7.2.8";
 constexpr auto AppFABetaVersion = false;
+constexpr auto AppFABetaNumber = 0;

@@ -3,5 +3,6 @@ AppVersionStrMajor 2.5
 AppVersionStrSmall 2.5.7
 AppVersionStr      2.5.7
 BetaChannel        0
+BetaNumber         0
 AlphaVersion       0
 AppVersionOriginal 2.5.7

@@ -23,7 +23,9 @@ void SendToBannedHelp(const QString &phone) {
 	const auto version = QString::fromLatin1(AppVersionStr)
 		+ (cAlphaVersion()
 			? qsl(" alpha %1").arg(cAlphaVersion())
-			: (AppBetaVersion ? " beta" : ""));
+			: (AppBetaVersion
+				? (AppBetaNumber > 0 ? qsl(" beta %1").arg(AppBetaNumber) : " beta")
+				: ""));
 
 	const auto subject = qsl("Banned phone number: ") + phone;
 
