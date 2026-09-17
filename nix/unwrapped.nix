@@ -53,6 +53,7 @@ stdenv.mkDerivation (finalAttrs: {
   ];
 
   buildInputs = [
+    pango
     qtbase
     qtsvg
     lz4
